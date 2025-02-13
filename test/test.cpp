@@ -13,7 +13,7 @@ TEST_CASE("Dispatch Queue") {
 
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
-		q.dispatch_and_forget([=]() {
+		q.dispatch_forget([=]() {
 			REQUIRE(std::this_thread::get_id() == thread_id);
 		});
 	}
@@ -28,7 +28,7 @@ TEST_CASE("Dispatch Queue") {
 
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
-		q.dispatch_and_forget([=]() {
+		q.dispatch_forget([=]() {
 			REQUIRE(std::this_thread::get_id() != thread_id);
 		});
 	}
@@ -45,7 +45,7 @@ TEST_CASE("Dispatch Queue") {
 		INFO("Test thread ID" << thread_id);
 		for (int i = 0; i < 10; i++) {
 
-			q.dispatch_and_forget([=]() {
+			q.dispatch_forget([=]() {
 				REQUIRE(std::this_thread::get_id() != thread_id);
 			});
 		}

@@ -43,30 +43,59 @@ private:
 
 class dispatch_queue {
 public:
-	dispatch_queue();
+	/**
+	 * Create a synchronous dispatch queue.
+	 * In synchronous mode, tasks are executed immediately when calling `dispatch`.
+	 */
+	 dispatch_queue();
+
+	/**
+	 * If `thread_count` is 0, the dispatch queue is created in synchronouse mode.
+	 * Otherwise, the dispatch queue is created in asynchronous mode with `thread_count` threads.
+	 * Pass 1 to create a serial dispatch queue, where tasks are processed in a background thread,
+	 * but only one at a time without any concurrency.
+	 */
 	dispatch_queue(int thread_count);
+
+	dispatch_queue(const dispatch_queue&) = delete;
+
+	/**
+	 * Calls `shutdown`.
+	 */
 	~dispatch_queue();
 
-	template<typename F, typename... Args>
-	std::future<detail::function_result<F, Args...>> dispatch(F&& f, Args&&... args) {
-		using function_result = detail::function_result<F, Args...>;
+	/**
+	 * Dispatch a task that calls `f` with forwarded arguments `args`.
+	 * If the dispatch queue is in synchronous mode, the task is processed right immediately.
+	 * @note If you don't need the returned future, prefer using `dispatch_forget` instead
+	 *       to avoid the overhead of creating shared state.
+	 * @returns Future for getting `f` result.
+	 */
+	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
+	std::future<Ret> dispatch(F&& f, Args&&... args) {
 		if (worker_pool) {
-			std::function<function_result()> task = std::bind(std::move(f), std::forward<Args>(args)...);
-			auto packaged_task = std::make_shared<std::packaged_task<function_result()>>(task);
+			std::function<Ret()> task = std::bind(std::move(f), std::forward<Args>(args)...);
+			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(task);
 			worker_pool->enqueue_task([=]() {
-				(*packaged_task.get())();
+				(*packaged_task)();
 			});
 			return packaged_task->get_future();
 		}
 		else {
-			std::promise<function_result> promise;
+			std::promise<Ret> promise;
 			promise.set_value(f(std::forward<Args>(args)...));
 			return promise.get_future();
 		}
 	}
 
+	/**
+	 * Dispatch a task that calls `f` with forwarded arguments `args`.
+	 * If the dispatch queue is in synchronous mode, the task is processed right immediately.
+	 * Contrary to `dispatch`, there's no way to get the result of the call or know when the task is finished.
+	 * Use this for "fire and forget" flows, benefiting of reduced overhead.
+	 */
 	template<typename F, typename... Args>
-	void dispatch_and_forget(F&& f, Args&&... args) {
+	void dispatch_forget(F&& f, Args&&... args) {
 		if (worker_pool) {
 			worker_pool->enqueue_task(std::bind(std::move(f), std::forward<Args>(args)...));
 		}
@@ -75,9 +104,28 @@ public:
 		}
 	}
 
-	bool is_threaded() const;
+	/**
+	 * Whether this dispatch queue uses threads for processing tasks.
+	 */
+	 bool is_threaded() const;
+
+	/**
+	 * Number of threads used for processing tasks.
+	 * This will be 0 on synchronous mode.
+	 */
 	int thread_count() const;
+
+	/**
+	 * Cancel pending tasks, clearing the current queue.
+	 * Tasks that are being processed will still run to completion.
+	 */
 	void clear();
+
+	/**
+	 * Cancel pending tasks, wait and release the used Threads.
+	 * The queue now runs in synchronous mode, so that new tasks will run in the main thread.
+	 * It is safe to call this more than once.
+	 */
 	void shutdown();
 
 private:
