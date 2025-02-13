@@ -80,6 +80,9 @@ dispatch_queue::dispatch_queue()
 }
 
 dispatch_queue::dispatch_queue(int thread_count) {
+	if (thread_count < 0) {
+		thread_count = std::thread::hardware_concurrency();
+	}
 	if (thread_count > 0) {
 		worker_pool = new detail::worker_pool(thread_count, task_queue);
 	}
