@@ -6,6 +6,8 @@ option(DISPATCH_QUEUE_NOEXCEPT "Disable exception support. Use if compiling proj
 
 add_library(dispatch_queue
   "include/dispatch_queue.hpp"
+  "include/function_result.hpp"
+  "include/worker_pool.hpp"
   "src/dispatch_queue.cpp"
 )
 target_compile_features(dispatch_queue PUBLIC cxx_std_11)

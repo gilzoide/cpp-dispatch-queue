@@ -1,47 +1,12 @@
-#include <condition_variable>
 #include <deque>
 #include <future>
-#include <mutex>
-#include <thread>
-#include <type_traits>
-#include <vector>
+#include <functional>
+#include <utility>
+
+#include "function_result.hpp"
+#include "worker_pool.hpp"
 
 namespace dispatch_queue {
-
-namespace detail {
-
-#ifdef __cpp_lib_is_invocable
-template<class F, class... ArgTypes>
-using function_result = typename std::invoke_result<F, ArgTypes...>::type;
-#else
-template<class F, class... ArgTypes>
-using function_result = typename std::result_of<F(ArgTypes...)>::type;
-#endif
-
-class worker_pool {
-public:
-	worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue);
-	~worker_pool();
-
-	int thread_count() const;
-	size_t size();
-
-	void enqueue_task(std::function<void()>&& task);
-	void clear();
-	void shutdown();
-
-private:
-	std::mutex mutex;
-	std::condition_variable condition_variable;
-	std::vector<std::thread> worker_threads;
-	std::deque<std::function<void()>>& task_queue;
-	bool is_shutting_down;
-
-	static void thread_entrypoint(worker_pool *pool);
-};
-
-} // end namespace detail
-
 
 class dispatch_queue {
 public:
