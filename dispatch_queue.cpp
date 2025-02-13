@@ -47,7 +47,9 @@ void worker_pool::shutdown() {
 		condition_variable.notify_one();
 	}
 	for (auto& thread : worker_threads) {
-		thread.join();
+		if (thread.joinable()) {
+			thread.join();
+		}
 	}
 	worker_threads.clear();
 	is_shutting_down = false;
