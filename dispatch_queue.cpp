@@ -81,6 +81,9 @@ dispatch_queue::dispatch_queue(int thread_count) {
 	if (thread_count > 0) {
 		worker_pool = new detail::worker_pool(thread_count, task_queue);
 	}
+	else {
+		worker_pool = nullptr;
+	}
 }
 
 dispatch_queue::~dispatch_queue() {
