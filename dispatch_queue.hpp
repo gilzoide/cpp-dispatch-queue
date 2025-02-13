@@ -1,8 +1,5 @@
 #include <condition_variable>
 #include <deque>
-#ifndef DISPATCH_QUEUE_NOEXCEPT
-#include <exception>
-#endif
 #include <future>
 #include <mutex>
 #include <thread>
@@ -26,14 +23,8 @@ public:
 	worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue);
 	~worker_pool();
 
-	template<typename... Args>
-	void emplace_task(Args&&... args) {
-		std::function<void()> task(args...);
-		queue_task(std::move(task));
-	}
-
 	int thread_count() const;
-	void queue_task(std::function<void()>&& task);
+	void enqueue_task(std::function<void()>&& task);
 	void clear();
 	void shutdown();
 
@@ -59,35 +50,25 @@ public:
 	template<typename F, typename... Args>
 	std::future<detail::function_result<F, Args...>> dispatch(F&& f, Args&&... args) {
 		using function_result = detail::function_result<F, Args...>;
-		std::promise<function_result> promise;
-		std::future<function_result> future = promise.get_future();
 		if (worker_pool) {
-			worker_pool->emplace_task(std::bind([](F&& f, std::promise<function_result>&& promise, Args&&... args) {
-#ifndef DISPATCH_QUEUE_NOEXCEPT
-				try {
-					promise.set_value(f(std::forward<Args>(args)...));
-				}
-				catch (...) {
-					try {
-						promise.set_exception(std::current_exception());
-					}
-					catch (...) {}
-				}
-#else
-				promise.set_value(f(std::forward<Args>(args)...));
-#endif
-			}, std::move(f), std::move(promise), std::forward<Args>(args)...));
+			std::function<function_result()> task = std::bind(std::move(f), std::forward<Args>(args)...);
+			auto packaged_task = std::make_shared<std::packaged_task<function_result()>>(task);
+			worker_pool->enqueue_task([=]() {
+				(*packaged_task.get())();
+			});
+			return packaged_task->get_future();
 		}
 		else {
+			std::promise<function_result> promise;
 			promise.set_value(f(std::forward<Args>(args)...));
+			return promise.get_future();
 		}
-		return future;
 	}
 
 	template<typename F, typename... Args>
 	void dispatch_and_forget(F&& f, Args&&... args) {
 		if (worker_pool) {
-			worker_pool->emplace_task(std::bind(std::move(f), std::forward<Args>(args)...));
+			worker_pool->enqueue_task(std::bind(std::move(f), std::forward<Args>(args)...));
 		}
 		else {
 			f(std::forward<Args>(args)...);

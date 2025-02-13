@@ -21,7 +21,7 @@ int worker_pool::thread_count() const {
 	return worker_threads.size();
 }
 
-void worker_pool::queue_task(std::function<void()>&& task) {
+void worker_pool::enqueue_task(std::function<void()>&& task) {
 	{
 		std::lock_guard<std::mutex> lk(mutex);
 		task_queue.push_back(std::move(task));
