@@ -75,8 +75,8 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	std::future<Ret> dispatch(F&& f, Args&&... args) {
+		std::function<Ret()> task = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
-			std::function<Ret()> task = std::bind(std::move(f), std::forward<Args>(args)...);
 			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(task);
 			worker_pool->enqueue_task([=]() {
 				(*packaged_task)();
@@ -84,9 +84,9 @@ public:
 			return packaged_task->get_future();
 		}
 		else {
-			std::promise<Ret> promise;
-			promise.set_value(f(std::forward<Args>(args)...));
-			return promise.get_future();
+			std::packaged_task<Ret()> packaged_task(task);
+			packaged_task();
+			return packaged_task.get_future();
 		}
 	}
 
