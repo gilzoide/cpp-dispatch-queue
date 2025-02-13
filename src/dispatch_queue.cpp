@@ -135,6 +135,11 @@ void dispatch_queue::clear() {
 	}
 }
 
+void dispatch_queue::wait() {
+	auto future = dispatch([](){});
+	future.wait();
+}
+
 void dispatch_queue::shutdown() {
 	clear();
 	if (worker_pool) {

@@ -99,6 +99,36 @@ public:
 	void clear();
 
 	/**
+	 * Wait until all pending tasks finish processing.
+	 * @see std::future<T>::wait
+	 */
+	 void wait();
+
+	/**
+	 * Wait until all pending tasks finish processing.
+	 * Blocks until specified `timeout_duration` has elapsed or the result becomes available, whichever comes first.
+	 * The return value indicates why `wait_for` returned.
+	 * @see std::future<T>::wait_for
+	 */
+	template<class Rep, class Period>
+	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+		auto future = dispatch([](){});
+		return future.wait_for(timeout_duration);
+	}
+
+	/**
+	 * Wait until all pending tasks finish processing.
+	 * It blocks until specified `timeout_time` has been reached or the result becomes available, whichever comes first.
+	 * The return value indicates why `wait_until` returned.
+	 * @see std::future<T>::wait_until
+	 */
+	template<class Clock, class Duration>
+	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+		auto future = dispatch([](){});
+		return future.wait_until(timeout_time);
+	}
+
+	/**
 	 * Cancel pending tasks, wait and release the used Threads.
 	 * The queue now runs in synchronous mode, so that new tasks will run in the main thread.
 	 * It is safe to call this more than once.
