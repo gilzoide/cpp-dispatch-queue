@@ -24,6 +24,8 @@ public:
 	~worker_pool();
 
 	int thread_count() const;
+	size_t size();
+
 	void enqueue_task(std::function<void()>&& task);
 	void clear();
 	void shutdown();
@@ -114,6 +116,16 @@ public:
 	 * This will be 0 on synchronous mode.
 	 */
 	int thread_count() const;
+
+	/**
+	 * Returns the number of queued tasks;
+	 */
+	 size_t size() const;
+
+	/**
+	 * Returns whether queue is empty, that is, there are no tasks queued.
+	 */
+	bool empty() const;
 
 	/**
 	 * Cancel pending tasks, clearing the current queue.

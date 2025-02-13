@@ -21,6 +21,11 @@ int worker_pool::thread_count() const {
 	return worker_threads.size();
 }
 
+size_t worker_pool::size() {
+	std::lock_guard<std::mutex> lk(mutex);
+	return task_queue.size();
+}
+
 void worker_pool::enqueue_task(std::function<void()>&& task) {
 	{
 		std::lock_guard<std::mutex> lk(mutex);
@@ -106,6 +111,19 @@ int dispatch_queue::thread_count() const {
 	else {
 		return 0;
 	}
+}
+
+size_t dispatch_queue::size() const {
+	if (worker_pool) {
+		return worker_pool->size();
+	}
+	else {
+		return task_queue.size();
+	}
+}
+
+bool dispatch_queue::empty() const {
+	return size() == 0;
 }
 
 void dispatch_queue::clear() {
