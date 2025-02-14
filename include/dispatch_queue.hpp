@@ -34,7 +34,7 @@ public:
 
 	/**
 	 * Dispatch a task that calls `f` with forwarded arguments `args`.
-	 * If the dispatch queue is in synchronous mode, the task is processed right immediately.
+	 * If the dispatch queue is in synchronous mode, the task is processed immediately in the calling thread.
 	 * @note If you don't need the returned future, prefer using `dispatch_forget` instead
 	 *       to avoid the overhead of creating shared state.
 	 * @returns Future for getting `f` result.
@@ -58,7 +58,7 @@ public:
 
 	/**
 	 * Dispatch a task that calls `f` with forwarded arguments `args`.
-	 * If the dispatch queue is in synchronous mode, the task is processed right immediately.
+	 * If the dispatch queue is in synchronous mode, the task is processed immediately in the calling thread.
 	 * Contrary to `dispatch`, there's no way to get the result of the call or know when the task is finished.
 	 * Use this for "fire and forget" flows, benefiting of reduced overhead.
 	 */
