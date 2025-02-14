@@ -13,6 +13,9 @@ public:
 	worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue);
 	~worker_pool();
 
+	worker_pool(const worker_pool&) = delete;
+	worker_pool& operator=(const worker_pool&) = delete;
+
 	int thread_count() const;
 	size_t size();
 

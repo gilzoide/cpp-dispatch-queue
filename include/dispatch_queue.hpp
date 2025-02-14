@@ -25,6 +25,7 @@ public:
 	dispatch_queue(int thread_count);
 
 	dispatch_queue(const dispatch_queue&) = delete;
+	dispatch_queue& operator=(const dispatch_queue&) = delete;
 
 	/**
 	 * Calls `shutdown`.
