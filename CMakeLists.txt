@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0)
 
 project(dispatch_queue LANGUAGES CXX)
 
+option(DISPATCH_QUEUE_BUILD_TESTS "Whether to build automated tests" ${PROJECT_IS_TOP_LEVEL})
+
 add_library(dispatch_queue
   "include/dispatch_queue.hpp"
   "include/function_result.hpp"
