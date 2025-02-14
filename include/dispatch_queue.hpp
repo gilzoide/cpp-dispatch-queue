@@ -119,7 +119,7 @@ public:
 
 	/**
 	 * Wait until all pending tasks finish processing.
-	 * It blocks until specified `timeout_time` has been reached or the result becomes available, whichever comes first.
+	 * Blocks until the specified `timeout_time` has been reached or the result becomes available, whichever comes first.
 	 * The return value indicates why `wait_until` returned.
 	 * @see std::future<T>::wait_until
 	 */
@@ -131,7 +131,7 @@ public:
 
 	/**
 	 * Cancel pending tasks, wait and release the used Threads.
-	 * The queue now runs in synchronous mode, so that new tasks will run in the main thread.
+	 * The queue now runs in synchronous mode, so that new tasks will run immediately.
 	 * It is safe to call this more than once.
 	 */
 	void shutdown();
