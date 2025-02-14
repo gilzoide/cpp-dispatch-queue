@@ -6,8 +6,9 @@ namespace detail {
 
 worker_pool::worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue)
 	: task_queue(task_queue)
-	, worker_threads(thread_count)
+	, worker_threads()
 {
+	worker_threads.reserve(thread_count);
 	for (int i = 0; i < thread_count; i++) {
 		worker_threads.emplace_back(thread_entrypoint, this);
 	}
