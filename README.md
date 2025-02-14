@@ -9,7 +9,7 @@ Dispatch Queue / Thread Pool implementation for C++11.
 - Supports both synchronous (immediate) and asynchronous (threaded) execution.
   + Asynchronous dispatch queues are also known as Thread Pools
   + Synchronous dispatch queues are useful for multiplatform code that must work on platforms without thread support, for example WebAssembly on browsers that lack `SharedArrayBuffer` support
-- Single implementation file [src/dispatch.cpp](src/dispatch.cpp), easy to integrate in any project
+- Single implementation file [src/dispatch_queue.cpp](src/dispatch_queue.cpp), easy to integrate in any project
 
 
 ## Usage example
