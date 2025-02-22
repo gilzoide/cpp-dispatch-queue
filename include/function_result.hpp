@@ -1,3 +1,6 @@
+#ifndef __DISPATCH_QUEUE_FUNCTION_RESULT_HPP__
+#define __DISPATCH_QUEUE_FUNCTION_RESULT_HPP__
+
 #include <type_traits>
 
 namespace dispatch_queue {
@@ -15,3 +18,5 @@ using function_result = typename std::result_of<F(ArgTypes...)>::type;
 }
 
 }
+
+#endif  // __DISPATCH_QUEUE_FUNCTION_RESULT_HPP__
