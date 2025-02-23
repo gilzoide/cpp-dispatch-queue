@@ -20,12 +20,34 @@ public:
 	 dispatch_queue();
 
 	/**
-	 * If `thread_count` is 0, the dispatch queue is created in synchronouse mode.
-	 * Otherwise, the dispatch queue is created in asynchronous mode with `thread_count` threads.
-	 * Pass 1 to create a serial dispatch queue, where tasks are processed in a background thread,
-	 * but only one at a time without any concurrency.
+	 * Initializes dispatch queue with `thread_count` background threads and a no-op `worker_init`.
+	 * @see dispatch_queue(int, Fn&&)
 	 */
 	dispatch_queue(int thread_count);
+
+	/**
+	 * Initializes dispatch queue with `thread_count` background threads and a worker initialization functor.
+	 *
+	 * @param thread_count  Number of background threads used to run tasks.
+	 *                      If 0, the dispatch queue is created in synchronous mode.
+	 *                      If 1, tasks will run serially in background, one at a time, without any concurrency.
+	 *                      Otherwise, `thread_count` threads will be created and tasks may run concurrently.
+	 *                      Pass a negative number to use the default value of `std::thread::hardware_concurrency()` threads.
+	 * @param worker_init  Functor called inside worker threads for initialization, receiving as argument the worker index.
+	 *                     May be used to set the thread name, for example.
+	 */
+	template<typename Fn>
+	dispatch_queue(int thread_count, Fn&& worker_init) {
+		if (thread_count < 0) {
+			thread_count = std::thread::hardware_concurrency();
+		}
+		if (thread_count > 0) {
+			worker_pool = new detail::worker_pool(thread_count, task_queue, worker_init);
+		}
+		else {
+			worker_pool = nullptr;
+		}
+	}
 
 	dispatch_queue(const dispatch_queue&) = delete;
 	dispatch_queue& operator=(const dispatch_queue&) = delete;

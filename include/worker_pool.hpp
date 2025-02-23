@@ -13,7 +13,19 @@ namespace detail {
 
 class worker_pool {
 public:
-	worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue);
+	template<typename Fn>
+	worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue, Fn&& worker_init)
+		: task_queue(task_queue)
+		, worker_threads()
+	{
+		worker_threads.reserve(thread_count);
+		for (int i = 0; i < thread_count; i++) {
+			worker_threads.emplace_back([&, this, i]() {
+				worker_init(i);
+				run_task_loop();
+			});
+		}
+	}
 	~worker_pool();
 
 	worker_pool(const worker_pool&) = delete;
@@ -33,7 +45,7 @@ private:
 	std::deque<std::function<void()>>& task_queue;
 	bool is_shutting_down;
 
-	static void thread_entrypoint(worker_pool *pool);
+	void run_task_loop();
 };
 
 } // end namespace detail

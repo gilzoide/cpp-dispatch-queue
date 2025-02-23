@@ -4,16 +4,6 @@ namespace dispatch_queue {
 
 namespace detail {
 
-worker_pool::worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue)
-	: task_queue(task_queue)
-	, worker_threads()
-{
-	worker_threads.reserve(thread_count);
-	for (int i = 0; i < thread_count; i++) {
-		worker_threads.emplace_back(thread_entrypoint, this);
-	}
-}
-
 worker_pool::~worker_pool() {
 	shutdown();
 }
@@ -61,17 +51,17 @@ void worker_pool::shutdown() {
 	is_shutting_down = false;
 }
 
-void worker_pool::thread_entrypoint(worker_pool *pool) {
+void worker_pool::run_task_loop() {
 	while (true) {
 		std::function<void()> task;
 		{
-			std::unique_lock<std::mutex> lk(pool->mutex);
-			pool->condition_variable.wait(lk, [&]() { return pool->is_shutting_down || !pool->task_queue.empty(); });
-			if (pool->is_shutting_down) {
+			std::unique_lock<std::mutex> lk(mutex);
+			condition_variable.wait(lk, [this]() { return is_shutting_down || !task_queue.empty(); });
+			if (is_shutting_down) {
 				return;
 			}
-			task = std::move(pool->task_queue.front());
-			pool->task_queue.pop_front();
+			task = std::move(task_queue.front());
+			task_queue.pop_front();
 		}
 		task();
 	}
@@ -85,16 +75,9 @@ dispatch_queue::dispatch_queue()
 {
 }
 
-dispatch_queue::dispatch_queue(int thread_count) {
-	if (thread_count < 0) {
-		thread_count = std::thread::hardware_concurrency();
-	}
-	if (thread_count > 0) {
-		worker_pool = new detail::worker_pool(thread_count, task_queue);
-	}
-	else {
-		worker_pool = nullptr;
-	}
+dispatch_queue::dispatch_queue(int thread_count)
+	: dispatch_queue(thread_count, [](int){})
+{
 }
 
 dispatch_queue::~dispatch_queue() {
