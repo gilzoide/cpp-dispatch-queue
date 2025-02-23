@@ -90,3 +90,14 @@ Add this project using `add_subdirectory` and link your target to `dispatch_queu
 add_subdirectory(path/to/dispatch_queue)
 target_link_libraries(my_target dispatch_queue)
 ```
+
+
+## Setting thread names for debugging
+You can pass a functor to the dispatch queue constructor that will run inside worker threads when they initialize.
+There you can set thread names:
+```cpp
+dispatch_queue::dispatch_queue dispatcher(4, [](int worker_index) {
+    std::string worker_name = std::format("worker{}", worker_index);
+    // TODO: set thread name, platform-specific
+});
+```
