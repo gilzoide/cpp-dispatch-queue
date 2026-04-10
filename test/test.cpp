@@ -44,7 +44,6 @@ TEST_CASE("Dispatch Queue") {
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
 		for (int i = 0; i < 10; i++) {
-
 			q.dispatch_forget([=]() {
 				REQUIRE(std::this_thread::get_id() != thread_id);
 			});

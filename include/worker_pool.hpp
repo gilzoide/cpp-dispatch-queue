@@ -14,9 +14,8 @@ namespace detail {
 class worker_pool {
 public:
 	template<typename Fn>
-	worker_pool(int thread_count, std::deque<std::function<void()>>& task_queue, Fn&& worker_init)
-		: task_queue(task_queue)
-		, worker_threads()
+	worker_pool(int thread_count, Fn&& worker_init)
+		: worker_threads()
 	{
 		worker_threads.reserve(thread_count);
 		for (int i = 0; i < thread_count; i++) {
@@ -42,7 +41,7 @@ private:
 	std::mutex mutex;
 	std::condition_variable condition_variable;
 	std::vector<std::thread> worker_threads;
-	std::deque<std::function<void()>>& task_queue;
+	std::deque<std::function<void()>> task_queue;
 	bool is_shutting_down;
 
 	void run_task_loop();

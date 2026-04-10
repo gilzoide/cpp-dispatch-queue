@@ -42,7 +42,7 @@ public:
 			thread_count = std::thread::hardware_concurrency();
 		}
 		if (thread_count > 0) {
-			worker_pool = new detail::worker_pool(thread_count, task_queue, worker_init);
+			worker_pool = new detail::worker_pool(thread_count, worker_init);
 		}
 		else {
 			worker_pool = nullptr;
@@ -163,7 +163,6 @@ public:
 
 private:
 	detail::worker_pool *worker_pool;
-	std::deque<std::function<void()>> task_queue;
 };
 
 }

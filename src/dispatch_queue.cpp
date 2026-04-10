@@ -102,7 +102,7 @@ size_t dispatch_queue::size() const {
 		return worker_pool->size();
 	}
 	else {
-		return task_queue.size();
+		return 0;
 	}
 }
 
@@ -113,9 +113,6 @@ bool dispatch_queue::empty() const {
 void dispatch_queue::clear() {
 	if (worker_pool) {
 		worker_pool->clear();
-	}
-	else {
-		task_queue.clear();
 	}
 }
 
