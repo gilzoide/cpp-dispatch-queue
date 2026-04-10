@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0...4.1)
+cmake_minimum_required(VERSION 3.21...4.1)
 
 project(dispatch_queue LANGUAGES CXX)
 
