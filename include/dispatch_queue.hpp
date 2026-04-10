@@ -138,8 +138,13 @@ public:
 	 */
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
-		auto future = dispatch([](){});
-		return future.wait_for(timeout_duration);
+		if (worker_pool) {
+			auto future = dispatch([](){});
+			return future.wait_for(timeout_duration);
+		}
+		else {
+			return std::future_status::ready;
+		}
 	}
 
 	/**
@@ -150,8 +155,13 @@ public:
 	 */
 	template<class Clock, class Duration>
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
-		auto future = dispatch([](){});
-		return future.wait_until(timeout_time);
+		if (worker_pool) {
+			auto future = dispatch([](){});
+			return future.wait_until(timeout_time);
+		}
+		else {
+			return std::future_status::ready;
+		}
 	}
 
 	/**
