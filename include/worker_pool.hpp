@@ -1,5 +1,4 @@
-#ifndef __DISPATCH_QUEUE_WORKER_POOL_HPP__
-#define __DISPATCH_QUEUE_WORKER_POOL_HPP__
+#pragma once
 
 #include <condition_variable>
 #include <deque>
@@ -50,5 +49,3 @@ private:
 } // end namespace detail
 
 }
-
-#endif  // __DISPATCH_QUEUE_WORKER_POOL_HPP__

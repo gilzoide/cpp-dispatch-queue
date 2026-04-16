@@ -1,5 +1,4 @@
-#ifndef __DISPATCH_QUEUE_HPP__
-#define __DISPATCH_QUEUE_HPP__
+#pragma once
 
 #include <deque>
 #include <future>
@@ -176,5 +175,3 @@ private:
 };
 
 }
-
-#endif  // __DISPATCH_QUEUE_HPP__

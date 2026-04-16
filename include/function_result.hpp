@@ -1,5 +1,4 @@
-#ifndef __DISPATCH_QUEUE_FUNCTION_RESULT_HPP__
-#define __DISPATCH_QUEUE_FUNCTION_RESULT_HPP__
+#pragma once
 
 #include <type_traits>
 
@@ -18,5 +17,3 @@ using function_result = typename std::result_of<F(ArgTypes...)>::type;
 }
 
 }
-
-#endif  // __DISPATCH_QUEUE_FUNCTION_RESULT_HPP__
