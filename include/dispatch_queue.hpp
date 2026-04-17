@@ -1,22 +1,32 @@
 #pragma once
 
-#include <deque>
 #include <future>
 #include <functional>
 #include <utility>
 
 #include "function_result.hpp"
+#include "pending_task.hpp"
 #include "worker_pool.hpp"
 
 namespace dispatch_queue {
 
 class dispatch_queue {
 public:
+	template<typename T>
+	class task : public std::future<T> {
+	public:
+		task_id id;
+
+	private:
+		task(std::future<T>&& future, task_id id) : std::future<T>(std::move(future)), id(id) {}
+		friend class dispatch_queue;
+	};
+
 	/**
 	 * Create a synchronous dispatch queue.
 	 * In synchronous mode, tasks are executed immediately when calling `dispatch`.
 	 */
-	 dispatch_queue();
+	dispatch_queue();
 
 	/**
 	 * Initializes dispatch queue with `thread_count` background threads and a no-op `worker_init`.
@@ -41,7 +51,7 @@ public:
 			thread_count = std::thread::hardware_concurrency();
 		}
 		if (thread_count > 0) {
-			worker_pool = new detail::worker_pool(thread_count, worker_init);
+			worker_pool = new detail::worker_pool(task_queue, thread_count, worker_init);
 		}
 		else {
 			worker_pool = nullptr;
@@ -64,20 +74,8 @@ public:
 	 * @returns Future for getting `f` result.
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	std::future<Ret> dispatch(F&& f, Args&&... args) {
-		std::function<Ret()> task = std::bind(std::move(f), std::forward<Args>(args)...);
-		if (worker_pool) {
-			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(task);
-			worker_pool->enqueue_task([=]() {
-				(*packaged_task)();
-			});
-			return packaged_task->get_future();
-		}
-		else {
-			std::packaged_task<Ret()> packaged_task(task);
-			packaged_task();
-			return packaged_task.get_future();
-		}
+	task<Ret> dispatch(F&& f, Args&&... args) {
+		return dispatch_internal(0, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -89,11 +87,20 @@ public:
 	template<typename F, typename... Args>
 	void dispatch_forget(F&& f, Args&&... args) {
 		if (worker_pool) {
-			worker_pool->enqueue_task(std::bind(std::move(f), std::forward<Args>(args)...));
+			task_id id = next_task_id++;
+			worker_pool->enqueue_task({
+				id,
+				std::bind(std::move(f), std::forward<Args>(args)...)
+			});
 		}
 		else {
 			f(std::forward<Args>(args)...);
 		}
+	}
+
+	template<typename F, typename... Args, typename TaskRet, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch_after(const task<TaskRet>& t, F&& f, Args&&... args) {
+		dispatch_internal(t.id, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -172,6 +179,44 @@ public:
 
 private:
 	detail::worker_pool *worker_pool;
+	pending_task_queue task_queue;
+	task_id next_task_id = 1;
+
+	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch_internal(task_id dependency, F&& f, Args&&... args) {
+		task_id id = next_task_id++;
+		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
+		if (worker_pool) {
+			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(std::move(work));
+			worker_pool->enqueue_task({
+				id,
+				[=]() { (*packaged_task)(); },
+			}, dependency);
+			return task<Ret> {
+				std::move(packaged_task->get_future()),
+				id,
+			};
+		}
+		else if (pending_task* dependency_task = task_queue.find(dependency)) {
+			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(std::move(work));
+			task_queue.push({
+				id,
+				[=]() { (*packaged_task)(); },
+			}, dependency);
+			return task<Ret> {
+				std::move(packaged_task->get_future()),
+				id,
+			};
+		}
+		else {
+			std::packaged_task<Ret()> packaged_task(std::move(work));
+			packaged_task();
+			return task<Ret> {
+				std::move(packaged_task.get_future()),
+				id,
+			};
+		}
+	}
 };
 
 }

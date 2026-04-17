@@ -1,10 +1,11 @@
 #pragma once
 
 #include <condition_variable>
-#include <deque>
-#include <functional>
 #include <mutex>
 #include <thread>
+
+#include "pending_task_queue.hpp"
+
 
 namespace dispatch_queue {
 
@@ -13,8 +14,8 @@ namespace detail {
 class worker_pool {
 public:
 	template<typename Fn>
-	worker_pool(int thread_count, Fn&& worker_init)
-		: worker_threads()
+	worker_pool(pending_task_queue& task_queue, int thread_count, Fn&& worker_init)
+		: task_queue(task_queue)
 	{
 		worker_threads.reserve(thread_count);
 		for (int i = 0; i < thread_count; i++) {
@@ -32,7 +33,7 @@ public:
 	int thread_count() const;
 	size_t size();
 
-	void enqueue_task(std::function<void()>&& task);
+	void enqueue_task(pending_task&& task, task_id dependency = 0);
 	void clear();
 	void shutdown();
 
@@ -40,7 +41,7 @@ private:
 	std::mutex mutex;
 	std::condition_variable condition_variable;
 	std::vector<std::thread> worker_threads;
-	std::deque<std::function<void()>> task_queue;
+	pending_task_queue& task_queue;
 	bool is_shutting_down;
 
 	void run_task_loop();
