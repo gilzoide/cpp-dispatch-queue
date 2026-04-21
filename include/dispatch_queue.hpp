@@ -99,7 +99,7 @@ public:
 	/**
 	 * Whether this dispatch queue uses threads for processing tasks.
 	 */
-	 bool is_threaded() const;
+	bool is_threaded() const;
 
 	/**
 	 * Number of threads used for processing tasks.
@@ -110,7 +110,7 @@ public:
 	/**
 	 * Returns the number of queued tasks;
 	 */
-	 size_t size() const;
+	size_t size() const;
 
 	/**
 	 * Returns whether queue is empty, that is, there are no tasks queued.
@@ -127,7 +127,7 @@ public:
 	 * Wait until all pending tasks finish processing.
 	 * @see std::future<T>::wait
 	 */
-	 void wait();
+	void wait();
 
 	/**
 	 * Wait until all pending tasks finish processing.
