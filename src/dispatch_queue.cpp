@@ -63,4 +63,4 @@ void dispatch_queue::shutdown() {
 	}
 }
 
-}
+} // end namespace dispatch_queue

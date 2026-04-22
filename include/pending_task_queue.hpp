@@ -8,6 +8,8 @@
 
 namespace dispatch_queue {
 
+namespace detail {
+
 class pending_task_queue {
 public:
 	bool empty() const;
@@ -26,4 +28,6 @@ private:
 	std::unordered_map<task_id, pending_task> pending_tasks;
 };
 
-}
+} // end namespace detail
+
+} // end namespace dispatch_queue

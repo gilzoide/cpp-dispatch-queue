@@ -301,4 +301,4 @@ private:
 	friend class dispatch_queue;
 };
 
-}
+} // end namespace dispatch_queue

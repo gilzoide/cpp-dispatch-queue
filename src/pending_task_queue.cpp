@@ -5,6 +5,8 @@
 
 namespace dispatch_queue {
 
+namespace detail {
+
 bool pending_task_queue::empty() const {
 	return ready_pending_tasks.empty();
 }
@@ -68,4 +70,6 @@ int pending_task_queue::process_completed_task(const pending_task* completed_tas
 	return new_task_count;
 }
 
-}
+} // end namespace detail
+
+} // end namespace dispatch_queue

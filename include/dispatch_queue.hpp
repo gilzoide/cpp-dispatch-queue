@@ -170,7 +170,7 @@ public:
 
 private:
 	detail::worker_pool *worker_pool;
-	pending_task_queue task_queue;
+	detail::pending_task_queue task_queue;
 	task_id next_task_id = 1;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
@@ -200,4 +200,4 @@ private:
 	}
 };
 
-}
+} // end namespace dispatch_queue

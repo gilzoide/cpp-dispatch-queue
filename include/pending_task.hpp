@@ -12,4 +12,4 @@ struct pending_task {
 	std::vector<pending_task*> continuations;
 };
 
-}
+} // end namespace dispatch_queue

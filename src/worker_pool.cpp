@@ -57,7 +57,7 @@ void worker_pool::run_task_loop() {
 		pending_task* task;
 		{
 			std::unique_lock<std::mutex> lk(mutex);
-			condition_variable.wait(lk, [&, this]() { return is_shutting_down || !task_queue.empty(); });
+			condition_variable.wait(lk, [this]() { return is_shutting_down || !task_queue.empty(); });
 			if (is_shutting_down) {
 				return;
 			}
