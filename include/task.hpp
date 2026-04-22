@@ -299,8 +299,6 @@ private:
 	task(task_id id, std::shared_ptr<detail::task_future<T>> future) : id(id), future(future) {}
 
 	friend class dispatch_queue;
-	friend class synchronous_dispatch_queue;
-	friend class concurrent_dispatch_queue;
 };
 
 }
