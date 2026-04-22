@@ -42,10 +42,7 @@ public:
 			thread_count = std::thread::hardware_concurrency();
 		}
 		if (thread_count > 0) {
-			worker_pool = new detail::worker_pool(task_queue, thread_count, worker_init);
-		}
-		else {
-			worker_pool = nullptr;
+			worker_pool = std::make_unique<detail::worker_pool>(task_queue, thread_count, worker_init);
 		}
 	}
 
@@ -169,7 +166,7 @@ public:
 	void shutdown();
 
 private:
-	detail::worker_pool *worker_pool;
+	std::unique_ptr<detail::worker_pool> worker_pool;
 	detail::pending_task_queue task_queue;
 	task_id next_task_id = 1;
 

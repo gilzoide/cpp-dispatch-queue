@@ -57,10 +57,7 @@ void dispatch_queue::wait() {
 
 void dispatch_queue::shutdown() {
 	clear();
-	if (worker_pool) {
-		delete worker_pool;
-		worker_pool = nullptr;
-	}
+	worker_pool.reset();
 }
 
 } // end namespace dispatch_queue
