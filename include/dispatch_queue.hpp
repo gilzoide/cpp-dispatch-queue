@@ -6,22 +6,13 @@
 
 #include "function_result.hpp"
 #include "pending_task.hpp"
+#include "task.hpp"
 #include "worker_pool.hpp"
 
 namespace dispatch_queue {
 
 class dispatch_queue {
 public:
-	template<typename T>
-	class task : public std::future<T> {
-	public:
-		task_id id;
-
-	private:
-		task(std::future<T>&& future, task_id id) : std::future<T>(std::move(future)), id(id) {}
-		friend class dispatch_queue;
-	};
-
 	/**
 	 * Create a synchronous dispatch queue.
 	 * In synchronous mode, tasks are executed immediately when calling `dispatch`.
@@ -100,7 +91,7 @@ public:
 
 	template<typename F, typename... Args, typename TaskRet, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_after(const task<TaskRet>& t, F&& f, Args&&... args) {
-		dispatch_internal(t.id, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(t.id, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -187,34 +178,24 @@ private:
 		task_id id = next_task_id++;
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
-			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(std::move(work));
+			auto future = detail::task_future<Ret>::create(task_state::pending);
 			worker_pool->enqueue_task({
 				id,
-				[=]() { (*packaged_task)(); },
+				future->wrap(work),
 			}, dependency);
-			return task<Ret> {
-				std::move(packaged_task->get_future()),
-				id,
-			};
+			return task<Ret>(id, future);
 		}
 		else if (pending_task* dependency_task = task_queue.find(dependency)) {
-			auto packaged_task = std::make_shared<std::packaged_task<Ret()>>(std::move(work));
+			auto future = detail::task_future<Ret>::create(task_state::pending);
 			task_queue.push({
 				id,
-				[=]() { (*packaged_task)(); },
+				future->wrap(work),
 			}, dependency);
-			return task<Ret> {
-				std::move(packaged_task->get_future()),
-				id,
-			};
+			return task<Ret>(id, future);
 		}
 		else {
-			std::packaged_task<Ret()> packaged_task(std::move(work));
-			packaged_task();
-			return task<Ret> {
-				std::move(packaged_task.get_future()),
-				id,
-			};
+			auto future = detail::task_future<Ret>::create(work);
+			return task<Ret>(id, future);
 		}
 	}
 };
