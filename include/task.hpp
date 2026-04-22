@@ -90,13 +90,17 @@ public:
 
 	template<typename F>
 	void do_work(F&& work) {
+#ifdef __cpp_exceptions
 		try {
+#endif
 			auto value = work();
 			set_value(std::move(value));
+#ifdef __cpp_exceptions
 		}
 		catch (...) {
 			set_exception(std::current_exception());
 		}
+#endif
 	}
 
 	template<typename F>
@@ -200,13 +204,17 @@ public:
 
 	template<typename F>
 	void do_work(F&& work) {
+#ifdef __cpp_exceptions
 		try {
+#endif
 			work();
 			set_value();
+#ifdef __cpp_exceptions
 		}
 		catch (...) {
 			set_exception(std::current_exception());
 		}
+#endif
 	}
 
 	template<typename F>
