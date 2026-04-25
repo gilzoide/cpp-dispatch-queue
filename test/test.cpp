@@ -30,8 +30,13 @@ TEST_CASE("Dispatch Queue") {
 
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
-		q.dispatch([=]() {
+
+		auto task = q.dispatch([=]() {
 			REQUIRE(std::this_thread::get_id() != thread_id);
+			return 42;
+		});
+		q.dispatch(task, [task]{
+			REQUIRE(task.get() == 42);
 		});
 
 		q.wait();

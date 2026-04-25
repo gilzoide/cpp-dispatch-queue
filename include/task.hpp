@@ -266,7 +266,7 @@ public:
 		return future->get_id();
 	}
 
-	T get() {
+	T get() const {
 		return future->get();
 	}
 
@@ -286,17 +286,17 @@ public:
 		return future->is_exception();
 	}
 
-	void wait() {
+	void wait() const {
 		future->wait();
 	}
 
 	template<class Rep, class Period>
-	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
 		return future->wait_for(timeout_duration);
 	}
 
 	template<class Clock, class Duration>
-	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
 		return future->wait_until(timeout_time);
 	}
 

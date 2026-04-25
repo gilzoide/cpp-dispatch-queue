@@ -67,7 +67,7 @@ public:
 	}
 
 	template<typename F, typename... Args, typename TaskRet, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_after(const task<TaskRet>& t, F&& f, Args&&... args) {
+	task<Ret> dispatch(const task<TaskRet>& t, F&& f, Args&&... args) {
 		return dispatch_internal(t.get_id(), std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
