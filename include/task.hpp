@@ -18,41 +18,18 @@ enum class task_state {
 
 namespace detail {
 
-template<typename T>
-class task_future : public std::enable_shared_from_this<task_future<T>> {
+class task_future_base {
 	auto wait_predicate() {
 		return [this]{ return state == task_state::ready; };
 	}
 public:
-	task_future(task_state state)
-		: empty()
-		, state(state)
+	task_future_base(task_state state)
+		: state(state)
 	{
-	}
-	task_future(T&& value)
-		: value(std::move(value))
-		, state(task_state::ready)
-	{
-	}
-
-	static std::shared_ptr<task_future> create(task_state state) {
-		return std::make_shared<task_future>(state);
-	}
-	template<typename F>
-	static std::shared_ptr<task_future> create(F&& work) {
-		return std::make_shared<task_future>(std::move(work()));
 	}
 
 	task_id get_id() const {
 		return (task_id)this;
-	}
-
-	T get() {
-		wait();
-		if (exception) {
-			std::rethrow_exception(exception);
-		}
-		return value;
 	}
 
 	std::exception_ptr get_exception() const {
@@ -68,7 +45,7 @@ public:
 	}
 
 	bool is_exception() const {
-		return exception;
+		return (bool)exception;
 	}
 
 	void wait() {
@@ -91,6 +68,42 @@ public:
 		return condition_variable.wait_for(lock, timeout_time, wait_predicate());
 	}
 
+protected:
+	std::mutex mutex;
+	std::condition_variable condition_variable;
+	std::exception_ptr exception;
+	task_state state;
+};
+
+template<typename T>
+class task_future : public task_future_base, public std::enable_shared_from_this<task_future<T>> {
+public:
+	task_future(task_state state)
+		: task_future_base(state)
+		, empty()
+	{
+	}
+	task_future(T&& value)
+		: task_future_base(task_state::ready)
+		, value(std::move(value))
+	{
+	}
+
+	static std::shared_ptr<task_future> create(task_state state) {
+		return std::make_shared<task_future>(state);
+	}
+	template<typename F>
+	static std::shared_ptr<task_future> create(F&& work) {
+		return std::make_shared<task_future>(std::move(work()));
+	}
+
+	T get() {
+		wait();
+		if (exception) {
+			std::rethrow_exception(exception);
+		}
+		return value;
+	}
 
 	template<typename F>
 	void do_work(F&& work) {
@@ -134,23 +147,16 @@ public:
 	}
 
 private:
-	std::mutex mutex;
-	std::condition_variable condition_variable;
-	std::exception_ptr exception;
 	union {
 		struct{} empty;
 		T value;
 	};
-	task_state state;
 };
 
 template<>
-class task_future<void> : public std::enable_shared_from_this<task_future<void>> {
-	auto wait_predicate() {
-		return [this]{ return state == task_state::ready; };
-	}
+class task_future<void> : public task_future_base, public std::enable_shared_from_this<task_future<void>> {
 public:
-	task_future(task_state state) : state(state)
+	task_future(task_state state) : task_future_base(state)
 	{
 	}
 
@@ -163,51 +169,11 @@ public:
 		return std::make_shared<task_future>(task_state::ready);
 	}
 
-	task_id get_id() const {
-		return (task_id)this;
-	}
-
 	void get() {
 		wait();
 		if (exception) {
 			std::rethrow_exception(exception);
 		}
-	}
-
-	std::exception_ptr get_exception() const {
-		return exception;
-	}
-
-	bool is_pending() const {
-		return state == task_state::pending;
-	}
-
-	bool is_ready() const {
-		return state == task_state::ready;
-	}
-
-	bool is_exception() const {
-		return (bool)exception;
-	}
-
-	void wait() {
-		if (is_ready()) {
-			return;
-		}
-		std::unique_lock<std::mutex> lock(mutex);
-		condition_variable.wait(lock, wait_predicate());
-	}
-
-	template<class Rep, class Period>
-	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
-		std::unique_lock<std::mutex> lock(mutex);
-		return condition_variable.wait_for(lock, timeout_duration, wait_predicate());
-	}
-
-	template<class Clock, class Duration>
-	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
-		std::unique_lock<std::mutex> lock(mutex);
-		return condition_variable.wait_for(lock, timeout_time, wait_predicate());
 	}
 
 	template<typename F>
@@ -249,12 +215,6 @@ public:
 		}
 		condition_variable.notify_all();
 	}
-
-private:
-	std::mutex mutex;
-	std::condition_variable condition_variable;
-	std::exception_ptr exception;
-	task_state state;
 };
 
 } // end namespace detail
