@@ -25,6 +25,17 @@ void worker_pool::enqueue_task(pending_task&& task, task_id dependency) {
 	condition_variable.notify_one();
 }
 
+void worker_pool::process_completed_task(pending_task* task) {
+	int new_task_count;
+	{
+		std::unique_lock<std::mutex> lk(mutex);
+		new_task_count = task_queue.process_completed_task(task);
+	}
+	for (int i = 0; i < new_task_count; ++i) {
+		condition_variable.notify_one();
+	}
+}
+
 void worker_pool::clear() {
 	std::lock_guard<std::mutex> lk(mutex);
 	task_queue.clear();
@@ -51,6 +62,10 @@ void worker_pool::shutdown() {
 	is_shutting_down = false;
 }
 
+std::unique_lock<std::mutex> worker_pool::get_lock() {
+	return std::unique_lock<std::mutex>(mutex);
+}
+
 void worker_pool::run_task_loop() {
 	while (true) {
 		// 1. Get a valid task
@@ -68,17 +83,7 @@ void worker_pool::run_task_loop() {
 		task->work();
 
 		// 3. Mark any pending tasks that dependend on `task` as valid
-		int new_task_count;
-		{
-			std::unique_lock<std::mutex> lk(mutex);
-			if (is_shutting_down) {
-				return;
-			}
-			new_task_count = task_queue.process_completed_task(task);
-		}
-		for (int i = 0; i < new_task_count; ++i) {
-			condition_variable.notify_one();
-		}
+		process_completed_task(task);
 	}
 }
 

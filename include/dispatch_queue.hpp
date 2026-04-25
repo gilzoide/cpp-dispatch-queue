@@ -57,18 +57,49 @@ public:
 	/**
 	 * Dispatch a task that calls `f` with forwarded arguments `args`.
 	 * If the dispatch queue is in synchronous mode, the task is processed immediately in the calling thread.
-	 * @note If you don't need the returned future, prefer using `dispatch_forget` instead
-	 *       to avoid the overhead of creating shared state.
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
 	 * @returns Future for getting `f` result.
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch(F&& f, Args&&... args) {
-		return dispatch_internal(0, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(0, false, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+	/**
+	 * Dispatch a task that calls `f` with forwarded arguments `args` and is guaranteed to run after `dependency` is ready.
+	 * If the dispatch queue is in synchronous mode, the task is processed immediately in the calling thread.
+	 * @param dependency Dependency task
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
+	 * @returns Future for getting `f` result.
+	 */
+	template<typename F, typename... Args, typename TaskRet, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch(const task<TaskRet>& dependency, F&& f, Args&&... args) {
+		return dispatch_internal(dependency.get_id(), false, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
+	/**
+	 * Dispatch a task that calls `f` with forwarded arguments `args` in main loop.
+	 * Tasks dispatched with `dispatch_main` will only be executed when calling `main_loop`.
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
+	 * @returns Future for getting `f` result.
+	 */
+	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch_main(F&& f, Args&&... args) {
+		return dispatch_internal(0, true, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+	/**
+	 * Dispatch a task that calls `f` with forwarded arguments `args` in main loop and is guaranteed to run after `dependency` is ready.
+	 * Tasks dispatched with `dispatch_main` will only be executed when calling `main_loop`.
+	 * @param dependency Dependency task
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
+	 * @returns Future for getting `f` result.
+	 */
 	template<typename F, typename... Args, typename TaskRet, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch(const task<TaskRet>& t, F&& f, Args&&... args) {
-		return dispatch_internal(t.get_id(), std::forward<F>(f), std::forward<Args>(args)...);
+	task<Ret> dispatch_main(const task<TaskRet>& dependency, F&& f, Args&&... args) {
+		return dispatch_internal(dependency.get_id(), true, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -97,6 +128,12 @@ public:
 	 * Tasks that are being processed will still run to completion.
 	 */
 	void clear();
+
+	/**
+	 * Invoke main loop tasks.
+	 * This should be called in you application main loop for synchronization tasks.
+	 */
+	void main_loop();
 
 	/**
 	 * Wait until all pending tasks finish processing.
@@ -150,16 +187,16 @@ private:
 	detail::pending_task_queue task_queue;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_internal(task_id dependency, F&& f, Args&&... args) {
+	task<Ret> dispatch_internal(task_id dependency, bool run_on_main_loop, F&& f, Args&&... args) {
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
 			auto future = detail::task_future<Ret>::create(task_state::pending);
-			worker_pool->enqueue_task({ future->get_id(), future->wrap(work) }, dependency);
+			worker_pool->enqueue_task({ future->get_id(), future->wrap(work), run_on_main_loop }, dependency);
 			return task<Ret>(future);
 		}
 		else if (pending_task* dependency_task = task_queue.find(dependency)) {
 			auto future = detail::task_future<Ret>::create(task_state::pending);
-			task_queue.push({ future->get_id(), future->wrap(work) }, dependency);
+			task_queue.push({ future->get_id(), future->wrap(work), run_on_main_loop }, dependency);
 			return task<Ret>(future);
 		}
 		else {

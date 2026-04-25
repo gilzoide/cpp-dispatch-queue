@@ -1,4 +1,5 @@
 #include "../include/dispatch_queue.hpp"
+#include "../include/pending_task.hpp"
 
 namespace dispatch_queue {
 
@@ -45,6 +46,24 @@ bool dispatch_queue::empty() const {
 void dispatch_queue::clear() {
 	if (worker_pool) {
 		worker_pool->clear();
+	}
+}
+
+void dispatch_queue::main_loop() {
+	std::deque<pending_task*> main_loop_tasks;
+	{
+		std::unique_lock<std::mutex> lock = worker_pool ? worker_pool->get_lock() : std::unique_lock<std::mutex>{};
+		main_loop_tasks = task_queue.pop_main_loop_tasks();
+	}
+
+	for (auto it : main_loop_tasks) {
+		it->work();
+		if (worker_pool) {
+			worker_pool->process_completed_task(it);
+		}
+		else {
+			task_queue.process_completed_task(it);
+		}
 	}
 }
 

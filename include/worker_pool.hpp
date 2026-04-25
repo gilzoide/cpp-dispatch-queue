@@ -4,6 +4,7 @@
 #include <mutex>
 #include <thread>
 
+#include "pending_task.hpp"
 #include "pending_task_queue.hpp"
 
 
@@ -34,8 +35,11 @@ public:
 	size_t size();
 
 	void enqueue_task(pending_task&& task, task_id dependency = 0);
+	void process_completed_task(pending_task* task);
 	void clear();
 	void shutdown();
+
+	std::unique_lock<std::mutex> get_lock();
 
 private:
 	std::mutex mutex;

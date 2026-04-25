@@ -30,16 +30,11 @@ TEST_CASE("Dispatch Queue") {
 
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
-
 		auto task = q.dispatch([=]() {
 			REQUIRE(std::this_thread::get_id() != thread_id);
-			return 42;
-		});
-		q.dispatch(task, [task]{
-			REQUIRE(task.get() == 42);
 		});
 
-		q.wait();
+		task.wait();
 	}
 
 	SECTION("Concurrent") {
@@ -59,5 +54,46 @@ TEST_CASE("Dispatch Queue") {
 		}
 
 		q.wait();
+	}
+
+	SECTION("Dependency") {
+		dispatch_queue::dispatch_queue q(-1);
+
+		auto task = q.dispatch([=]() {
+			return 42;
+		});
+		auto dependant_task = q.dispatch(task, [task]{
+			REQUIRE(task.get() == 42);
+		});
+
+		dependant_task.wait();
+	}
+
+	SECTION("Main loop") {
+		dispatch_queue::dispatch_queue q(-1);
+
+		auto task = q.dispatch_main([=]() {
+			return 42;
+		});
+		REQUIRE(task.is_pending());
+		q.main_loop();
+		REQUIRE(task.is_ready());
+		REQUIRE(task.get() == 42);
+	}
+
+	SECTION("Main loop dependency") {
+		dispatch_queue::dispatch_queue q(-1);
+
+		auto task = q.dispatch([=]() {
+			return 42;
+		});
+		auto dependant_task = q.dispatch_main(task, [task]{
+			REQUIRE(task.get() == 42);
+		});
+		task.wait();
+
+		REQUIRE(dependant_task.is_pending());
+		q.main_loop();
+		REQUIRE(dependant_task.is_ready());
 	}
 }

@@ -22,9 +22,11 @@ public:
 	void push(pending_task&& task, task_id dependency = 0);
 	pending_task* pop();
 	int process_completed_task(const pending_task* completed_task);
+	std::deque<pending_task*> pop_main_loop_tasks();
 
 private:
 	std::deque<pending_task*> ready_pending_tasks;
+	std::deque<pending_task*> main_loop_pending_tasks;
 	std::unordered_map<task_id, pending_task> pending_tasks;
 };
 

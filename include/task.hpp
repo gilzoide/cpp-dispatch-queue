@@ -21,7 +21,7 @@ namespace detail {
 template<typename T>
 class task_future : public std::enable_shared_from_this<task_future<T>> {
 	auto wait_predicate() {
-		return [this]{ return is_ready(); };
+		return [this]{ return state == task_state::ready; };
 	}
 public:
 	task_future(task_state state)
@@ -147,7 +147,7 @@ private:
 template<>
 class task_future<void> : public std::enable_shared_from_this<task_future<void>> {
 	auto wait_predicate() {
-		return [this]{ return is_ready(); };
+		return [this]{ return state == task_state::ready; };
 	}
 public:
 	task_future(task_state state) : state(state)
