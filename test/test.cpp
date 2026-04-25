@@ -13,9 +13,11 @@ TEST_CASE("Dispatch Queue") {
 
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
-		q.dispatch_forget([=]() {
+		q.dispatch([=]() {
 			REQUIRE(std::this_thread::get_id() == thread_id);
 		});
+
+		q.wait();
 	}
 
 	SECTION("Serial") {
@@ -28,9 +30,11 @@ TEST_CASE("Dispatch Queue") {
 
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
-		q.dispatch_forget([=]() {
+		q.dispatch([=]() {
 			REQUIRE(std::this_thread::get_id() != thread_id);
 		});
+
+		q.wait();
 	}
 
 	SECTION("Concurrent") {
@@ -44,9 +48,11 @@ TEST_CASE("Dispatch Queue") {
 		auto thread_id = std::this_thread::get_id();
 		INFO("Test thread ID" << thread_id);
 		for (int i = 0; i < 10; i++) {
-			q.dispatch_forget([=]() {
+			q.dispatch([=]() {
 				REQUIRE(std::this_thread::get_id() != thread_id);
 			});
 		}
+
+		q.wait();
 	}
 }

@@ -2,9 +2,9 @@
 
 #include <functional>
 
-namespace dispatch_queue {
+#include "task.hpp"
 
-using task_id = size_t;
+namespace dispatch_queue {
 
 struct pending_task {
 	task_id id;

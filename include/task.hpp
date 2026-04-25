@@ -9,7 +9,7 @@
 
 namespace dispatch_queue {
 
-using task_id = size_t;
+using task_id = intptr_t;
 
 enum class task_state {
 	pending,
@@ -41,6 +41,10 @@ public:
 	template<typename F>
 	static std::shared_ptr<task_future> create(F&& work) {
 		return std::make_shared<task_future>(std::move(work()));
+	}
+
+	task_id get_id() const {
+		return (task_id)this;
 	}
 
 	T get() {
@@ -159,6 +163,10 @@ public:
 		return std::make_shared<task_future>(task_state::ready);
 	}
 
+	task_id get_id() const {
+		return (task_id)this;
+	}
+
 	void get() {
 		wait();
 		if (exception) {
@@ -255,7 +263,7 @@ template<typename T>
 class task {
 public:
 	task_id get_id() const {
-		return id;
+		return future->get_id();
 	}
 
 	T get() {
@@ -293,10 +301,9 @@ public:
 	}
 
 private:
-	task_id id;
 	std::shared_ptr<detail::task_future<T>> future;
 
-	task(task_id id, std::shared_ptr<detail::task_future<T>> future) : id(id), future(future) {}
+	task(std::shared_ptr<detail::task_future<T>> future) : future(future) {}
 
 	friend class dispatch_queue;
 };

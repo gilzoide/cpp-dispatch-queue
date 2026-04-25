@@ -66,29 +66,9 @@ public:
 		return dispatch_internal(0, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
-	/**
-	 * Dispatch a task that calls `f` with forwarded arguments `args`.
-	 * If the dispatch queue is in synchronous mode, the task is processed immediately in the calling thread.
-	 * Contrary to `dispatch`, there's no way to get the result of the call or know when the task is finished.
-	 * Use this for "fire and forget" flows, benefiting of reduced overhead.
-	 */
-	template<typename F, typename... Args>
-	void dispatch_forget(F&& f, Args&&... args) {
-		if (worker_pool) {
-			task_id id = next_task_id++;
-			worker_pool->enqueue_task({
-				id,
-				std::bind(std::move(f), std::forward<Args>(args)...)
-			});
-		}
-		else {
-			f(std::forward<Args>(args)...);
-		}
-	}
-
 	template<typename F, typename... Args, typename TaskRet, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_after(const task<TaskRet>& t, F&& f, Args&&... args) {
-		return dispatch_internal(t.id, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(t.get_id(), std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -168,31 +148,23 @@ public:
 private:
 	std::unique_ptr<detail::worker_pool> worker_pool;
 	detail::pending_task_queue task_queue;
-	task_id next_task_id = 1;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_internal(task_id dependency, F&& f, Args&&... args) {
-		task_id id = next_task_id++;
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
 			auto future = detail::task_future<Ret>::create(task_state::pending);
-			worker_pool->enqueue_task({
-				id,
-				future->wrap(work),
-			}, dependency);
-			return task<Ret>(id, future);
+			worker_pool->enqueue_task({ future->get_id(), future->wrap(work) }, dependency);
+			return task<Ret>(future);
 		}
 		else if (pending_task* dependency_task = task_queue.find(dependency)) {
 			auto future = detail::task_future<Ret>::create(task_state::pending);
-			task_queue.push({
-				id,
-				future->wrap(work),
-			}, dependency);
-			return task<Ret>(id, future);
+			task_queue.push({ future->get_id(), future->wrap(work) }, dependency);
+			return task<Ret>(future);
 		}
 		else {
 			auto future = detail::task_future<Ret>::create(work);
-			return task<Ret>(id, future);
+			return task<Ret>(future);
 		}
 	}
 };
