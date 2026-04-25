@@ -36,14 +36,26 @@ public:
 
 	void enqueue_task(pending_task&& task, task_id dependency = 0);
 	void process_completed_task(pending_task* task);
+	std::deque<pending_task*> pop_main_loop_tasks();
 	void clear();
 	void shutdown();
 
-	std::unique_lock<std::mutex> get_lock();
+	void wait();
+
+	template<class Rep, class Period>
+	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+		return all_done_condition_variable.wait_for(timeout_duration);
+	}
+
+	template<class Clock, class Duration>
+	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+		return all_done_condition_variable.wait_until(timeout_time);
+	}
 
 private:
 	std::mutex mutex;
-	std::condition_variable condition_variable;
+	std::condition_variable task_condition_variable;
+	std::condition_variable all_done_condition_variable;
 	std::vector<std::thread> worker_threads;
 	pending_task_queue& task_queue;
 	bool is_shutting_down;

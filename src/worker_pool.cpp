@@ -22,18 +22,28 @@ void worker_pool::enqueue_task(pending_task&& task, task_id dependency) {
 		std::lock_guard<std::mutex> lk(mutex);
 		task_queue.push(std::move(task), dependency);
 	}
-	condition_variable.notify_one();
+	task_condition_variable.notify_one();
 }
 
 void worker_pool::process_completed_task(pending_task* task) {
-	int new_task_count;
+	int new_task_count = 0;
+	bool processed_last = false;
 	{
 		std::unique_lock<std::mutex> lk(mutex);
 		new_task_count = task_queue.process_completed_task(task);
+		processed_last = task_queue.empty();
 	}
 	for (int i = 0; i < new_task_count; ++i) {
-		condition_variable.notify_one();
+		task_condition_variable.notify_one();
 	}
+	if (processed_last) {
+		all_done_condition_variable.notify_all();
+	}
+}
+
+std::deque<pending_task*> worker_pool::pop_main_loop_tasks() {
+	std::lock_guard<std::mutex> lk(mutex);
+	return task_queue.pop_main_loop_tasks();
 }
 
 void worker_pool::clear() {
@@ -51,7 +61,7 @@ void worker_pool::shutdown() {
 		is_shutting_down = true;
 	}
 	for (int i = 0; i < thread_count(); i++) {
-		condition_variable.notify_one();
+		task_condition_variable.notify_one();
 	}
 	for (auto& thread : worker_threads) {
 		if (thread.joinable()) {
@@ -62,8 +72,9 @@ void worker_pool::shutdown() {
 	is_shutting_down = false;
 }
 
-std::unique_lock<std::mutex> worker_pool::get_lock() {
-	return std::unique_lock<std::mutex>(mutex);
+void worker_pool::wait() {
+	std::unique_lock<std::mutex> lk(mutex);
+	all_done_condition_variable.wait(lk, [this]{ return is_shutting_down || task_queue.empty(); });
 }
 
 void worker_pool::run_task_loop() {
@@ -72,7 +83,7 @@ void worker_pool::run_task_loop() {
 		pending_task* task;
 		{
 			std::unique_lock<std::mutex> lk(mutex);
-			condition_variable.wait(lk, [this]() { return is_shutting_down || !task_queue.empty(); });
+			task_condition_variable.wait(lk, [this]() { return is_shutting_down || !task_queue.empty(); });
 			if (is_shutting_down) {
 				return;
 			}

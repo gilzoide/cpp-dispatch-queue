@@ -50,12 +50,7 @@ void dispatch_queue::clear() {
 }
 
 void dispatch_queue::main_loop() {
-	std::deque<pending_task*> main_loop_tasks;
-	{
-		std::unique_lock<std::mutex> lock = worker_pool ? worker_pool->get_lock() : std::unique_lock<std::mutex>{};
-		main_loop_tasks = task_queue.pop_main_loop_tasks();
-	}
-
+	std::deque<pending_task*> main_loop_tasks = worker_pool ? worker_pool->pop_main_loop_tasks() : task_queue.pop_main_loop_tasks();
 	for (auto it : main_loop_tasks) {
 		it->work();
 		if (worker_pool) {
@@ -69,8 +64,7 @@ void dispatch_queue::main_loop() {
 
 void dispatch_queue::wait() {
 	if (worker_pool) {
-		auto future = dispatch([](){});
-		future.wait();
+		worker_pool->wait();
 	}
 }
 

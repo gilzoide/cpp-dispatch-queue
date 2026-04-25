@@ -130,8 +130,8 @@ public:
 	void clear();
 
 	/**
-	 * Invoke main loop tasks.
-	 * This should be called in you application main loop for synchronization tasks.
+	 * Invoke main loop tasks dispatched using `dispatch_main`.
+	 * This should be called in you application main loop.
 	 */
 	void main_loop();
 
@@ -150,8 +150,7 @@ public:
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
 		if (worker_pool) {
-			auto future = dispatch([](){});
-			return future.wait_for(timeout_duration);
+			return worker_pool->wait_for(timeout_duration);
 		}
 		else {
 			return std::future_status::ready;
@@ -167,8 +166,7 @@ public:
 	template<class Clock, class Duration>
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
 		if (worker_pool) {
-			auto future = dispatch([](){});
-			return future.wait_until(timeout_time);
+			return worker_pool->wait_until(timeout_time);
 		}
 		else {
 			return std::future_status::ready;
@@ -177,7 +175,7 @@ public:
 
 	/**
 	 * Cancel pending tasks, wait and release the used Threads.
-	 * The queue now runs in synchronous mode, so that new tasks will run immediately.
+	 * The queue now runs in synchronous mode.
 	 * It is safe to call this more than once.
 	 */
 	void shutdown();
