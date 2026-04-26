@@ -87,6 +87,8 @@ protected:
 template<typename T>
 class task_future : public task_future_base, public std::enable_shared_from_this<task_future<T>> {
 public:
+	using value_type = T;
+
 	task_future(private_construct, task_state state)
 		: task_future_base(private_construct{}, state)
 		, empty()
@@ -182,6 +184,8 @@ private:
 template<>
 class task_future<void> : public task_future_base, public std::enable_shared_from_this<task_future<void>> {
 public:
+	using value_type = void;
+
 	task_future(private_construct, task_state state)
 		: task_future_base(private_construct{}, state)
 	{

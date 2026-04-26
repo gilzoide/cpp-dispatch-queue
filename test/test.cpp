@@ -1,4 +1,3 @@
-#include "task.hpp"
 #include <thread>
 
 #include <catch2/catch_test_macros.hpp>
@@ -88,21 +87,24 @@ TEST_CASE("Dispatch Queue") {
 		auto thread_id = std::this_thread::get_id();
 		auto task = q.dispatch([=]{
 			return 42;
-		}).then([](auto t) {
-			return t.get() + 1;
-		}).then([](auto t) {
+		}).then([=, &q](auto t) {
+			// This continuation may or may not run inside a background thread, it depends if `then` is called before or after task is pending execution
+			return q.dispatch_main([=] {
+				REQUIRE(std::this_thread::get_id() == thread_id);
+				REQUIRE(t.get() == 42);
+				return t.get() + 1;
+			});
+		}).then([=](auto t) {
+			// continuation from q.dispatch_main runs on main loop
+			REQUIRE(std::this_thread::get_id() == thread_id);
 			return t.get() + 2;
 		});
-		// auto dependant_task = q.dispatch_main(task, [=]{
-		// 	REQUIRE(std::this_thread::get_id() == thread_id);
-		// 	REQUIRE(task.get() == 42);
-		// });
-		REQUIRE(task.get() == 42 + 1 + 2);
 
-		// while(dependant_task.get_state() == dispatch_queue::task_state::pending) {
-		// 	q.main_loop();
-		// }
-		// REQUIRE(dependant_task.get_state() == dispatch_queue::task_state::ready);
+		while (task.get_state() == dispatch_queue::task_state::pending) {
+			q.main_loop();
+		}
+		REQUIRE(task.get_state() == dispatch_queue::task_state::ready);
+		REQUIRE(task.get() == 42 + 1 + 2);
 	}
 
 #ifdef __cpp_impl_coroutine
