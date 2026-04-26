@@ -1,3 +1,4 @@
+#include "task.hpp"
 #include <thread>
 
 #include <catch2/catch_test_macros.hpp>
@@ -99,4 +100,24 @@ TEST_CASE("Dispatch Queue") {
 		}
 		REQUIRE(dependant_task.get_state() == dispatch_queue::task_state::ready);
 	}
+
+#ifdef __cpp_impl_coroutine
+	SECTION("Dispatch awaiters") {
+		dispatch_queue::dispatch_queue q(-1);
+
+		auto thread_id = std::this_thread::get_id();
+		auto coro = [&, thread_id]() -> dispatch_queue::task<int> {
+			REQUIRE(std::this_thread::get_id() == thread_id);
+			co_await q.dispatch();
+			REQUIRE(std::this_thread::get_id() != thread_id);
+			co_await q.dispatch_main();
+			REQUIRE(std::this_thread::get_id() == thread_id);
+			co_return 3;
+		}();
+		while (coro.get_state() != dispatch_queue::task_state::ready) {
+			q.main_loop();
+		}
+		coro.get();
+	}
+#endif
 }

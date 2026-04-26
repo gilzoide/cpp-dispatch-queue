@@ -1,6 +1,9 @@
 #pragma once
 
 #include <condition_variable>
+#ifdef __cpp_lib_coroutine
+#include <coroutine>
+#endif
 #include <exception>
 #include <future>
 #include <memory>
@@ -17,6 +20,8 @@ enum class task_state {
 	exception,
 };
 
+template<typename T> class task;
+
 namespace detail {
 
 class task_future_base {
@@ -24,11 +29,6 @@ class task_future_base {
 		return [this]{ return state == task_state::ready; };
 	}
 public:
-	task_future_base(task_state state)
-		: state(state)
-	{
-	}
-
 	task_id get_id() const {
 		return (task_id)this;
 	}
@@ -73,12 +73,17 @@ protected:
 	std::condition_variable condition_variable;
 	std::exception_ptr exception;
 	task_state state;
+
+	task_future_base(task_state state)
+		: state(state)
+	{
+	}
 };
 
 template<typename T>
 class task_future : public task_future_base, public std::enable_shared_from_this<task_future<T>> {
 public:
-	task_future(task_state state)
+	task_future(task_state state = task_state::pending)
 		: task_future_base(state)
 		, empty()
 	{
@@ -89,7 +94,7 @@ public:
 	{
 	}
 
-	static std::shared_ptr<task_future> create(task_state state) {
+	static std::shared_ptr<task_future> create(task_state state = task_state::pending) {
 		return std::make_shared<task_future>(state);
 	}
 	template<typename F>
@@ -156,11 +161,12 @@ private:
 template<>
 class task_future<void> : public task_future_base, public std::enable_shared_from_this<task_future<void>> {
 public:
-	task_future(task_state state) : task_future_base(state)
+	task_future(task_state state = task_state::pending)
+		: task_future_base(state)
 	{
 	}
 
-	static std::shared_ptr<task_future> create(task_state state) {
+	static std::shared_ptr<task_future> create(task_state state = task_state::pending) {
 		return std::make_shared<task_future>(state);
 	}
 	template<typename F>
@@ -251,6 +257,48 @@ public:
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
 		return future->wait_until(timeout_time);
 	}
+
+#ifdef __cpp_lib_coroutine
+	template<typename U>
+	class promise {
+	public:
+		promise() : future(detail::task_future<U>::create()) {}
+
+		task<U> get_return_object() { return task(future); }
+		std::suspend_never initial_suspend() noexcept { return {}; }
+		std::suspend_always final_suspend() noexcept { return {}; }
+		void return_value(U&& value) {
+			future->set_value(std::move(value));
+		}
+		void unhandled_exception() {
+			future->set_exception(std::current_exception());
+		}
+
+	private:
+		std::shared_ptr<detail::task_future<U>> future;
+	};
+
+	template<>
+	class promise<void> {
+	public:
+		promise() : future(detail::task_future<void>::create()) {}
+
+		task<void> get_return_object() { return task(future); }
+		std::suspend_never initial_suspend() noexcept { return {}; }
+		std::suspend_always final_suspend() noexcept { return {}; }
+		void return_void() {
+			future->set_value();
+		}
+		void unhandled_exception() {
+			future->set_exception(std::current_exception());
+		}
+
+	private:
+		std::shared_ptr<detail::task_future<void>> future;
+	};
+
+	using promise_type = promise<T>;
+#endif
 
 private:
 	std::shared_ptr<detail::task_future<T>> future;

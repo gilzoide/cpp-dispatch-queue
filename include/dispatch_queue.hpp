@@ -180,6 +180,19 @@ public:
 	 */
 	void shutdown();
 
+#ifdef __cpp_lib_coroutine
+private:
+	struct dispatch_awaiter;
+	struct dispatch_main_awaiter;
+public:
+	dispatch_awaiter dispatch() {
+		return dispatch_awaiter(this);
+	}
+	dispatch_main_awaiter dispatch_main() {
+		return dispatch_main_awaiter(this);
+	}
+#endif
+
 private:
 	std::unique_ptr<detail::worker_pool> worker_pool;
 	detail::pending_task_queue task_queue;
@@ -202,6 +215,36 @@ private:
 			return task<Ret>(future);
 		}
 	}
+
+#ifdef __cpp_lib_coroutine
+	struct dispatch_awaiter {
+		dispatch_queue* dispatch_queue;
+
+		bool await_ready() const noexcept {
+            return false;
+        }
+
+        void await_suspend(std::coroutine_handle<> cont) const {
+            dispatch_queue->dispatch(cont);
+        }
+
+        void await_resume() {}
+	};
+
+	struct dispatch_main_awaiter {
+		dispatch_queue* dispatch_queue;
+
+		bool await_ready() const noexcept {
+            return false;
+        }
+
+        void await_suspend(std::coroutine_handle<> cont) const {
+            dispatch_queue->dispatch_main(cont);
+        }
+
+        void await_resume() {}
+	};
+#endif
 };
 
 } // end namespace dispatch_queue
