@@ -8,7 +8,7 @@ TEST_CASE("Dispatch Queue") {
 		dispatch_queue::dispatch_queue q(0);
 		REQUIRE(!q.is_threaded());
 
-		auto future = q.dispatch([]() { return 42; });
+		auto future = q.dispatch([]{ return 42; });
 		REQUIRE(future.get() == 42);
 
 		auto thread_id = std::this_thread::get_id();
@@ -24,8 +24,7 @@ TEST_CASE("Dispatch Queue") {
 		dispatch_queue::dispatch_queue q(1);
 		REQUIRE(q.is_threaded());
 
-		// q.dispatch_and_forget([]() { return 1; });
-		auto future = q.dispatch([]() { return 42; });
+		auto future = q.dispatch([]{ return 42; });
 		REQUIRE(future.get() == 42);
 
 		auto thread_id = std::this_thread::get_id();
@@ -41,8 +40,7 @@ TEST_CASE("Dispatch Queue") {
 		dispatch_queue::dispatch_queue q(-1);
 		REQUIRE(q.is_threaded());
 
-		// q.dispatch_and_forget([]() { return 1; });
-		auto future = q.dispatch([]() { return 42; });
+		auto future = q.dispatch([]{ return 42; });
 		REQUIRE(future.get() == 42);
 
 		auto thread_id = std::this_thread::get_id();
@@ -75,9 +73,9 @@ TEST_CASE("Dispatch Queue") {
 		auto task = q.dispatch_main([=]() {
 			return 42;
 		});
-		REQUIRE(task.is_pending());
+		REQUIRE(task.get_state() == dispatch_queue::task_state::pending);
 		q.main_loop();
-		REQUIRE(task.is_ready());
+		REQUIRE(task.get_state() == dispatch_queue::task_state::ready);
 		REQUIRE(task.get() == 42);
 	}
 
@@ -92,8 +90,9 @@ TEST_CASE("Dispatch Queue") {
 		});
 		task.wait();
 
-		REQUIRE(dependant_task.is_pending());
-		q.main_loop();
-		REQUIRE(dependant_task.is_ready());
+		while(dependant_task.get_state() == dispatch_queue::task_state::pending) {
+			q.main_loop();
+		}
+		REQUIRE(dependant_task.get_state() == dispatch_queue::task_state::ready);
 	}
 }

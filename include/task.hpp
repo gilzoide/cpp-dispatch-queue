@@ -14,6 +14,7 @@ using task_id = intptr_t;
 enum class task_state {
 	pending,
 	ready,
+	exception,
 };
 
 namespace detail {
@@ -32,24 +33,17 @@ public:
 		return (task_id)this;
 	}
 
+	task_state get_state() {
+		std::lock_guard<std::mutex> lock(mutex);
+		return state;
+	}
+
 	std::exception_ptr get_exception() const {
 		return exception;
 	}
 
-	bool is_pending() const {
-		return state == task_state::pending;
-	}
-
-	bool is_ready() const {
-		return state == task_state::ready;
-	}
-
-	bool is_exception() const {
-		return (bool)exception;
-	}
-
 	void wait() {
-		if (is_ready()) {
+		if (state == task_state::ready || state == task_state::exception) {
 			return;
 		}
 		std::unique_lock<std::mutex> lock(mutex);
@@ -58,12 +52,18 @@ public:
 
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+		if (state == task_state::ready || state == task_state::exception) {
+			return std::future_status::ready;
+		}
 		std::unique_lock<std::mutex> lock(mutex);
 		return condition_variable.wait_for(lock, timeout_duration, wait_predicate());
 	}
 
 	template<class Clock, class Duration>
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+		if (state == task_state::ready || state == task_state::exception) {
+			return std::future_status::ready;
+		}
 		std::unique_lock<std::mutex> lock(mutex);
 		return condition_variable.wait_for(lock, timeout_time, wait_predicate());
 	}
@@ -140,7 +140,7 @@ public:
 	void set_exception(std::exception_ptr exception) {
 		{
 			std::lock_guard<std::mutex> lock(mutex);
-			state = task_state::ready;
+			state = task_state::exception;
 			this->exception = exception;
 		}
 		condition_variable.notify_all();
@@ -210,7 +210,7 @@ public:
 	void set_exception(std::exception_ptr exception) {
 		{
 			std::lock_guard<std::mutex> lock(mutex);
-			state = task_state::ready;
+			state = task_state::exception;
 			this->exception = exception;
 		}
 		condition_variable.notify_all();
@@ -230,20 +230,12 @@ public:
 		return future->get();
 	}
 
+	task_state get_state() const {
+		return future->get_state();
+	}
+
 	std::exception_ptr get_exception() const {
 		return future->get_exception();
-	}
-
-	bool is_pending() const {
-		return future->is_pending();
-	}
-
-	bool is_ready() const {
-		return future->is_ready();
-	}
-
-	bool is_exception() const {
-		return future->is_exception();
 	}
 
 	void wait() const {
