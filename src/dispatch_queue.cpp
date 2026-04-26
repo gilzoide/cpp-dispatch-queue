@@ -1,5 +1,4 @@
 #include "../include/dispatch_queue.hpp"
-#include "../include/pending_task.hpp"
 
 namespace dispatch_queue {
 
@@ -50,15 +49,11 @@ void dispatch_queue::clear() {
 }
 
 void dispatch_queue::main_loop() {
-	std::deque<pending_task*> main_loop_tasks = worker_pool ? worker_pool->pop_main_loop_tasks() : task_queue.pop_main_loop_tasks();
-	for (auto it : main_loop_tasks) {
-		it->work();
-		if (worker_pool) {
-			worker_pool->process_completed_task(it);
-		}
-		else {
-			task_queue.process_completed_task(it);
-		}
+	std::deque<pending_task> main_loop_tasks = worker_pool
+		? worker_pool->pop_main_loop_tasks()
+		: task_queue.pop_main_loop_tasks();
+	for (auto&& it : main_loop_tasks) {
+		it.work();
 	}
 }
 

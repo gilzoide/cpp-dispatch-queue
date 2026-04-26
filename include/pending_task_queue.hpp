@@ -1,7 +1,6 @@
 #pragma once
 
 #include <deque>
-#include <unordered_map>
 
 #include "pending_task.hpp"
 
@@ -16,18 +15,13 @@ public:
 	size_t size() const;
 	void clear();
 
-	pending_task* find(task_id id);
-	const pending_task* find(task_id id) const;
-
-	void push(pending_task&& task, task_id dependency = 0);
-	pending_task* pop();
-	int process_completed_task(const pending_task* completed_task);
-	std::deque<pending_task*> pop_main_loop_tasks();
+	void push(pending_task&& task, bool run_on_main_loop);
+	bool try_pop(pending_task& task);
+	std::deque<pending_task> pop_main_loop_tasks();
 
 private:
-	std::deque<pending_task*> ready_pending_tasks;
-	std::deque<pending_task*> main_loop_pending_tasks;
-	std::unordered_map<task_id, pending_task> pending_tasks;
+	std::deque<pending_task> background_tasks;
+	std::deque<pending_task> main_loop_tasks;
 };
 
 } // end namespace detail

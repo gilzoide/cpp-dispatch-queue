@@ -1,6 +1,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <future>
 #include <mutex>
 #include <thread>
 
@@ -34,9 +35,8 @@ public:
 	int thread_count() const;
 	size_t size();
 
-	void enqueue_task(pending_task&& task, task_id dependency = 0);
-	void process_completed_task(pending_task* task);
-	std::deque<pending_task*> pop_main_loop_tasks();
+	void enqueue_task(pending_task&& task, bool run_on_main_loop);
+	std::deque<pending_task> pop_main_loop_tasks();
 	void clear();
 	void shutdown();
 
