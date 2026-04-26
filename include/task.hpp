@@ -12,6 +12,13 @@ public:
 	{
 	}
 
+	template<typename F>
+	auto then(F&& f) {
+		return to_task(future->then([f, this]() {
+			return f(*this);
+		}));
+	}
+
 	T get() const {
 		return future->get();
 	}
@@ -40,6 +47,11 @@ public:
 
 private:
 	std::shared_ptr<detail::task_future<T>> future;
+
+	template<typename U>
+	static task<U> to_task(std::shared_ptr<detail::task_future<U>> future) {
+		return task<U>(future);
+	}
 };
 
 } // end namespace dispatch_queue

@@ -6,6 +6,8 @@
 #include <memory>
 #include <mutex>
 
+#include "function_result.hpp"
+
 namespace dispatch_queue {
 
 enum class task_state {
@@ -18,7 +20,7 @@ namespace detail {
 
 class task_future_base {
 	auto wait_predicate() {
-		return [this]{ return state == task_state::ready; };
+		return [this]{ return state != task_state::pending; };
 	}
 public:
 	task_state get_state() {
@@ -40,28 +42,28 @@ public:
 	}
 
 	void wait() {
-		if (state == task_state::ready || state == task_state::exception) {
+		std::unique_lock<std::mutex> lock(mutex);
+		if (state != task_state::pending) {
 			return;
 		}
-		std::unique_lock<std::mutex> lock(mutex);
 		condition_variable.wait(lock, wait_predicate());
 	}
 
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
-		if (state == task_state::ready || state == task_state::exception) {
+		std::unique_lock<std::mutex> lock(mutex);
+		if (state != task_state::pending) {
 			return std::future_status::ready;
 		}
-		std::unique_lock<std::mutex> lock(mutex);
 		return condition_variable.wait_for(lock, timeout_duration, wait_predicate());
 	}
 
 	template<class Clock, class Duration>
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
-		if (state == task_state::ready || state == task_state::exception) {
+		std::unique_lock<std::mutex> lock(mutex);
+		if (state != task_state::pending) {
 			return std::future_status::ready;
 		}
-		std::unique_lock<std::mutex> lock(mutex);
 		return condition_variable.wait_for(lock, timeout_time, wait_predicate());
 	}
 
@@ -77,6 +79,9 @@ protected:
 		: state(state)
 	{
 	}
+
+	task_future_base(const task_future_base&) = delete;
+	task_future_base& operator=(const task_future_base&) = delete;
 };
 
 template<typename T>
@@ -107,6 +112,22 @@ public:
 		return std::make_shared<task_future>(private_construct{}, std::move(work()));
 	}
 
+	template<typename F>
+	auto then(F&& f) {
+		auto continuation_future = task_future<function_result<F>>::create();
+		std::unique_lock<std::mutex> lock(mutex);
+		if (state == task_state::pending) {
+			continuations.push_back([=]() {
+				continuation_future->do_work(f);
+			});
+		}
+		else {
+			lock.unlock();
+			continuation_future->do_work(f);
+		}
+		return continuation_future;
+	}
+
 	T get() {
 		wait();
 		if (exception) {
@@ -115,12 +136,12 @@ public:
 		return value;
 	}
 
-	template<typename F>
-	void do_work(F&& work) {
+	template<typename F, typename... Args>
+	void do_work(F&& work, Args&&... args) {
 #ifdef __cpp_exceptions
 		try {
 #endif
-			auto value = work();
+			auto value = work(std::forward<Args>(args)...);
 			set_value(std::move(value));
 #ifdef __cpp_exceptions
 		}
@@ -128,6 +149,9 @@ public:
 			set_exception(std::current_exception());
 		}
 #endif
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
 	}
 
 	template<typename F>
@@ -148,6 +172,7 @@ public:
 	}
 
 private:
+	std::vector<std::function<void()>> continuations;
 	union {
 		struct{} empty;
 		T value;
@@ -171,6 +196,22 @@ public:
 		return std::make_shared<task_future>(private_construct{}, task_state::ready);
 	}
 
+	template<typename F>
+	auto then(F&& f) {
+		auto continuation_future = task_future<function_result<F>>::create();
+		std::unique_lock<std::mutex> lock(mutex);
+		if (state == task_state::pending) {
+			continuations.push_back([=]() {
+				continuation_future->do_work(f);
+			});
+		}
+		else {
+			lock.unlock();
+			continuation_future->do_work(f);
+		}
+		return continuation_future;
+	}
+
 	void get() {
 		wait();
 		if (exception) {
@@ -178,12 +219,12 @@ public:
 		}
 	}
 
-	template<typename F>
-	void do_work(F&& work) {
+template<typename F, typename... Args>
+	void do_work(F&& work, Args&&... args) {
 #ifdef __cpp_exceptions
 		try {
 #endif
-			work();
+			work(std::forward<Args>(args)...);
 			set_value();
 #ifdef __cpp_exceptions
 		}
@@ -191,6 +232,9 @@ public:
 			set_exception(std::current_exception());
 		}
 #endif
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
 	}
 
 	template<typename F>
@@ -208,6 +252,9 @@ public:
 		}
 		condition_variable.notify_all();
 	}
+
+private:
+	std::vector<std::function<void()>> continuations;
 };
 
 } // end namespace detail

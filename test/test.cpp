@@ -88,12 +88,16 @@ TEST_CASE("Dispatch Queue") {
 		auto thread_id = std::this_thread::get_id();
 		auto task = q.dispatch([=]{
 			return 42;
+		}).then([](auto t) {
+			return t.get() + 1;
+		}).then([](auto t) {
+			return t.get() + 2;
 		});
 		// auto dependant_task = q.dispatch_main(task, [=]{
 		// 	REQUIRE(std::this_thread::get_id() == thread_id);
 		// 	REQUIRE(task.get() == 42);
 		// });
-		task.wait();
+		REQUIRE(task.get() == 42 + 1 + 2);
 
 		// while(dependant_task.get_state() == dispatch_queue::task_state::pending) {
 		// 	q.main_loop();
