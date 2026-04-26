@@ -225,7 +225,12 @@ private:
         }
 
         void await_suspend(std::coroutine_handle<> cont) const {
-            dispatch_queue->dispatch(cont);
+            dispatch_queue->dispatch([cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
         }
 
         void await_resume() {}
@@ -239,7 +244,12 @@ private:
         }
 
         void await_suspend(std::coroutine_handle<> cont) const {
-            dispatch_queue->dispatch_main(cont);
+            dispatch_queue->dispatch_main([cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
         }
 
         void await_resume() {}
