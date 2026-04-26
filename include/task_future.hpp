@@ -93,6 +93,12 @@ public:
 	{
 	}
 
+	~task_future() {
+		if (state == task_state::ready) {
+			value.~T();
+		}
+	}
+
 	static std::shared_ptr<task_future> create(task_state state = task_state::pending) {
 		return std::make_shared<task_future>(private_construct{}, state);
 	}
