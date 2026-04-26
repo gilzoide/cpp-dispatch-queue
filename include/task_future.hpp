@@ -30,6 +30,15 @@ public:
 		return exception;
 	}
 
+	void set_exception(std::exception_ptr exception) {
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			state = task_state::exception;
+			this->exception = exception;
+		}
+		condition_variable.notify_all();
+	}
+
 	void wait() {
 		if (state == task_state::ready || state == task_state::exception) {
 			return;
@@ -132,15 +141,6 @@ public:
 		condition_variable.notify_all();
 	}
 
-	void set_exception(std::exception_ptr exception) {
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			state = task_state::exception;
-			this->exception = exception;
-		}
-		condition_variable.notify_all();
-	}
-
 private:
 	union {
 		struct{} empty;
@@ -199,15 +199,6 @@ public:
 		{
 			std::lock_guard<std::mutex> lock(mutex);
 			state = task_state::ready;
-		}
-		condition_variable.notify_all();
-	}
-
-	void set_exception(std::exception_ptr exception) {
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			state = task_state::exception;
-			this->exception = exception;
 		}
 		condition_variable.notify_all();
 	}
