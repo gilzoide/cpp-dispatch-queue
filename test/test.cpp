@@ -118,12 +118,14 @@ TEST_CASE("Dispatch Queue") {
 			REQUIRE(std::this_thread::get_id() != thread_id);
 			co_await q.dispatch_main();
 			REQUIRE(std::this_thread::get_id() == thread_id);
-			co_return 3;
+			int value = co_await q.dispatch([]{ return 3; });
+			REQUIRE(value == 3);
+			co_return value;
 		}();
 		while (coro.get_state() != dispatch_queue::task_state::ready) {
 			q.main_loop();
 		}
-		coro.get();
+		REQUIRE(coro.get() == 3);
 	}
 #endif
 }

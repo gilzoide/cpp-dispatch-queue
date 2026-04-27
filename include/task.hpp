@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cpp_lib_coroutine
+#include <coroutine>
+#endif
+
 #include "function_result.hpp"
 #include "is_instance_of.hpp"
 #include "task_future.hpp"
@@ -64,6 +68,35 @@ public:
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
 		return future->wait_until(timeout_time);
 	}
+
+#ifdef __cpp_lib_coroutine
+private:
+	class task_awaiter {
+	public:
+		task_awaiter(const task<T>& t) : t(t) {}
+		task_awaiter(task<T>&& t) : t(std::move(t)) {}
+
+		bool await_ready() const noexcept {
+			return t.get_state() != task_state::pending;
+		}
+
+		void await_suspend(std::coroutine_handle<> cont) const {
+			t.future->then(cont);
+		}
+
+		T await_resume() {
+			return t.get();
+		}
+
+	private:
+		task<T> t;
+	};
+
+public:
+	task_awaiter operator co_await() const {
+		return task_awaiter(*this);
+	}
+#endif
 
 private:
 	std::shared_ptr<detail::task_future<T>> future;

@@ -10,15 +10,15 @@ namespace dispatch_queue {
 
 namespace detail {
 
-template<typename U>
+template<typename T>
 class promise {
 public:
-	promise() : future(detail::task_future<U>::create()) {}
+	promise() : future(detail::task_future<T>::create()) {}
 
-	task<U> get_return_object() { return task(future); }
+	task<T> get_return_object() { return task(future); }
 	std::suspend_never initial_suspend() noexcept { return {}; }
 	std::suspend_always final_suspend() noexcept { return {}; }
-	void return_value(U&& value) {
+	void return_value(T&& value) {
 		future->set_value(std::move(value));
 	}
 	void unhandled_exception() {
@@ -26,8 +26,9 @@ public:
 	}
 
 private:
-	std::shared_ptr<detail::task_future<U>> future;
+	std::shared_ptr<detail::task_future<T>> future;
 };
+
 
 template<>
 class promise<void> {
