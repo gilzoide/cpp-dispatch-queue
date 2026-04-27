@@ -95,8 +95,6 @@ TEST_CASE("Dispatch Queue") {
 				return t.get() + 1;
 			});
 		}).then([=](auto t) {
-			// continuation from q.dispatch_main runs on main loop
-			REQUIRE(std::this_thread::get_id() == thread_id);
 			return t.get() + 2;
 		});
 

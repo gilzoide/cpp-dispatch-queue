@@ -13,9 +13,7 @@ namespace detail {
 template<typename T>
 class promise {
 public:
-	promise() : future(detail::task_future<T>::create()) {}
-
-	task<T> get_return_object() { return task(future); }
+	auto get_return_object() { return future; }
 	std::suspend_never initial_suspend() noexcept { return {}; }
 	std::suspend_always final_suspend() noexcept { return {}; }
 	void return_value(T&& value) {
@@ -26,16 +24,14 @@ public:
 	}
 
 private:
-	std::shared_ptr<detail::task_future<T>> future;
+	std::shared_ptr<detail::task_future<T>> future = detail::task_future<T>::create();
 };
 
 
 template<>
 class promise<void> {
 public:
-	promise() : future(detail::task_future<void>::create()) {}
-
-	task<void> get_return_object() { return task(future); }
+	auto get_return_object() { return future; }
 	std::suspend_never initial_suspend() noexcept { return {}; }
 	std::suspend_always final_suspend() noexcept { return {}; }
 	void return_void() {
@@ -46,7 +42,7 @@ public:
 	}
 
 private:
-	std::shared_ptr<detail::task_future<void>> future;
+	std::shared_ptr<detail::task_future<void>> future = detail::task_future<void>::create();
 };
 
 } // end namespace detail
