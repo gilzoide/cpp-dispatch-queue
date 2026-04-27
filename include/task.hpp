@@ -19,7 +19,7 @@ public:
 #ifdef __cpp_concepts
 	template<typename F>
 	requires (detail::is_instance_of<T, task>::value)
-	auto then(F&& f) {
+	auto then(F&& f) const {
 		auto nested_future = detail::task_future<detail::function_result<F, T>>::create();
 		task value_this = *this;
 		future->then([=]() {
@@ -32,7 +32,7 @@ public:
 #endif
 
 	template<typename F>
-	auto then(F&& f) {
+	auto then(F&& f) const {
 		task value_this = *this;
 		return to_task(future->then([=]() {
 			return f(value_this);
