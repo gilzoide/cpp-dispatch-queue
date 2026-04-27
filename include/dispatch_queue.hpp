@@ -158,14 +158,47 @@ public:
 
 #ifdef __cpp_lib_coroutine
 private:
-	struct dispatch_awaiter;
-	struct dispatch_main_awaiter;
+	struct dispatch_awaiter {
+		dispatch_queue& dispatch_queue;
+
+		bool await_ready() const noexcept { return false; }
+        void await_suspend(std::coroutine_handle<> cont) const {
+            dispatch_queue.dispatch([cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
+        }
+        void await_resume() {}
+	};
+
+	struct dispatch_main_awaiter {
+		dispatch_queue& dispatch_queue;
+
+		bool await_ready() const noexcept { return false; }
+        void await_suspend(std::coroutine_handle<> cont) const {
+            dispatch_queue.dispatch_main([cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
+        }
+        void await_resume() {}
+	};
 public:
+	/**
+	 * Returns an awaiter that resumes a coroutine using `dispatch` when `co_await`ed.
+	 */
 	dispatch_awaiter dispatch() {
-		return dispatch_awaiter(this);
+		return dispatch_awaiter(*this);
 	}
+	/**
+	 * Returns an awaiter that resumes a coroutine using `dispatch_main` when `co_await`ed.
+	 */
 	dispatch_main_awaiter dispatch_main() {
-		return dispatch_main_awaiter(this);
+		return dispatch_main_awaiter(*this);
 	}
 #endif
 
@@ -191,46 +224,6 @@ private:
 			return task<Ret>(future);
 		}
 	}
-
-#ifdef __cpp_lib_coroutine
-	struct dispatch_awaiter {
-		dispatch_queue* dispatch_queue;
-
-		bool await_ready() const noexcept {
-            return false;
-        }
-
-        void await_suspend(std::coroutine_handle<> cont) const {
-            dispatch_queue->dispatch([cont]{
-				cont();
-				if (cont.done()) {
-					cont.destroy();
-				}
-			});
-        }
-
-        void await_resume() {}
-	};
-
-	struct dispatch_main_awaiter {
-		dispatch_queue* dispatch_queue;
-
-		bool await_ready() const noexcept {
-            return false;
-        }
-
-        void await_suspend(std::coroutine_handle<> cont) const {
-            dispatch_queue->dispatch_main([cont]{
-				cont();
-				if (cont.done()) {
-					cont.destroy();
-				}
-			});
-        }
-
-        void await_resume() {}
-	};
-#endif
 };
 
 } // end namespace dispatch_queue
