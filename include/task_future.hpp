@@ -28,7 +28,8 @@ public:
 		return state;
 	}
 
-	std::exception_ptr get_exception() const {
+	std::exception_ptr get_exception() {
+		std::lock_guard<std::mutex> lock(mutex);
 		return exception;
 	}
 
@@ -83,6 +84,7 @@ protected:
 	task_future_base(const task_future_base&) = delete;
 	task_future_base& operator=(const task_future_base&) = delete;
 };
+
 
 template<typename T>
 class task_future : public task_future_base, public std::enable_shared_from_this<task_future<T>> {
@@ -180,6 +182,7 @@ private:
 		T value;
 	};
 };
+
 
 template<>
 class task_future<void> : public task_future_base, public std::enable_shared_from_this<task_future<void>> {
