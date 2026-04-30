@@ -11,8 +11,11 @@
 namespace dispatch_queue {
 
 enum class task_state {
+	/// Task is either queued for execution or still running
 	pending,
+	/// Task is ready and the result value is readily available
 	ready,
+	/// Task failed with an exception
 	exception,
 };
 

@@ -10,6 +10,14 @@
 
 namespace dispatch_queue {
 
+/**
+ * This template class represents asynchronous tasks that run in dispatch queues.
+ *
+ * Similar to `std::shared_future`, but with the addition of support for continuations (`then`),
+ * checking for task state (`get_state`) and built-in C++20 coroutine support (`operator co_await`).
+ *
+ * All methods are thread-safe.
+ */
 template<typename T>
 class task {
 public:
@@ -21,6 +29,12 @@ public:
 	}
 
 #ifdef __cpp_concepts
+	/**
+	 * Add a continuation `f` that is guaranteed to run after this task finishes.
+	 *
+	 * If the task is not finished yet, `f` will run right after the task finishes in the same thread where the task ran.
+	 * Otherwise, `f` will run immediately in the current thread.
+	 */
 	template<typename F>
 	requires (detail::is_instance_of<T, task>::value)
 	auto then(F&& f) const {
@@ -35,6 +49,12 @@ public:
 	}
 #endif
 
+	/**
+	 * Add a continuation `f` that is guaranteed to run after this task finishes.
+	 *
+	 * If the task is not finished yet, `f` will run right after the task finishes in the same thread where the task ran.
+	 * Otherwise, `f` will run immediately in the current thread.
+	 */
 	template<typename F>
 	auto then(F&& f) const {
 		task value_this = *this;
@@ -43,27 +63,60 @@ public:
 		}));
 	}
 
+	/**
+	 * Waits until the task's value is ready (by calling `wait`), then returns the stored value.
+	 *
+	 * If the task failed with an exception, rethrows the exception instead.
+	 */
 	T get() const {
 		return future->get();
 	}
 
+	/**
+	 * Returns the task state.
+	 */
 	task_state get_state() const {
 		return future->get_state();
 	}
 
+	/**
+	 * Returns the exception thrown while running task, if there's any.
+	 */
 	std::exception_ptr get_exception() const {
 		return future->get_exception();
 	}
 
+	/**
+	 * Waits until the task is either ready or failed with an exception.
+	 *
+	 * If the task is pending (`get_state() == task_state::pending`), blocks indefinitely until task finishes.
+	 * Otherwise returns immediately without blocking.
+	 */
 	void wait() const {
 		future->wait();
 	}
 
+	/**
+	 * Waits for at most `timeout_duration` until the task is either ready or failed with an exception.
+	 *
+	 * If the task is pending (`get_state() == task_state::pending`), blocks until task finishes or until the specified `timeout_duration` has elapsed.
+	 * Otherwise returns immediately without blocking.
+	 *
+	 * @returns `std::future_status::timeout` if the timeout has expired, otherwise `std::future_status::ready`.
+	 */
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
 		return future->wait_for(timeout_duration);
 	}
 
+	/**
+	 * Waits until `timeout_time` has been reached or until the task is either ready or failed with an exception, whichever comes first.
+	 *
+	 * If the task is pending (`get_state() == task_state::pending`), blocks until task finishes or until the specified `timeout_time` has been reached.
+	 * Otherwise returns immediately without blocking.
+	 *
+	 * @returns `std::future_status::timeout` if the timeout has expired, otherwise `std::future_status::ready`.
+	 */
 	template<class Clock, class Duration>
 	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
 		return future->wait_until(timeout_time);
@@ -93,6 +146,9 @@ private:
 	};
 
 public:
+	/**
+	 * Returns an awaiter that resumes coroutines on the task's continuation.
+	 */
 	task_awaiter operator co_await() const {
 		return task_awaiter(*this);
 	}
