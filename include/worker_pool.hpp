@@ -13,6 +13,9 @@ namespace dispatch_queue {
 namespace detail {
 
 class worker_pool {
+	auto wait_predicate() const {
+		return [this]{ return is_shutting_down || task_queue.empty(); };
+	}
 public:
 	template<typename Fn>
 	worker_pool(pending_task_queue& task_queue, int thread_count, Fn&& worker_init)
@@ -43,12 +46,14 @@ public:
 
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
-		return all_done_condition_variable.wait_for(timeout_duration);
+		std::unique_lock<std::mutex> lock(mutex);
+		return all_done_condition_variable.wait_for(lock, timeout_duration, wait_predicate());
 	}
 
 	template<class Clock, class Duration>
-	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
-		return all_done_condition_variable.wait_until(timeout_time);
+	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+		std::unique_lock<std::mutex> lock(mutex);
+		return all_done_condition_variable.wait_until(lock, timeout_time, wait_predicate());
 	}
 
 private:

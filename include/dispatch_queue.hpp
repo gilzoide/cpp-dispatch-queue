@@ -140,12 +140,12 @@ public:
 	 * @see std::future<T>::wait_until
 	 */
 	template<class Clock, class Duration>
-	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
 		if (worker_pool) {
 			return worker_pool->wait_until(timeout_time);
 		}
 		else {
-			return std::future_status::ready;
+			return true;
 		}
 	}
 

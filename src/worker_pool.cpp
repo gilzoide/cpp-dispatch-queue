@@ -13,25 +13,25 @@ int worker_pool::thread_count() const {
 }
 
 size_t worker_pool::size() {
-	std::lock_guard<std::mutex> lk(mutex);
+	std::lock_guard<std::mutex> lock(mutex);
 	return task_queue.size();
 }
 
 void worker_pool::enqueue_task(pending_task&& task, bool run_on_main_loop) {
 	{
-		std::lock_guard<std::mutex> lk(mutex);
+		std::lock_guard<std::mutex> lock(mutex);
 		task_queue.push(std::move(task), run_on_main_loop);
 	}
 	task_condition_variable.notify_one();
 }
 
 std::deque<pending_task> worker_pool::pop_main_loop_tasks() {
-	std::lock_guard<std::mutex> lk(mutex);
+	std::lock_guard<std::mutex> lock(mutex);
 	return task_queue.pop_main_loop_tasks();
 }
 
 void worker_pool::clear() {
-	std::lock_guard<std::mutex> lk(mutex);
+	std::lock_guard<std::mutex> lock(mutex);
 	task_queue.clear();
 }
 
@@ -41,7 +41,7 @@ void worker_pool::shutdown() {
 	}
 
 	{
-		std::lock_guard<std::mutex> lk(mutex);
+		std::lock_guard<std::mutex> lock(mutex);
 		is_shutting_down = true;
 	}
 	for (int i = 0; i < thread_count(); i++) {
@@ -57,8 +57,8 @@ void worker_pool::shutdown() {
 }
 
 void worker_pool::wait() {
-	std::unique_lock<std::mutex> lk(mutex);
-	all_done_condition_variable.wait(lk, [this]{ return is_shutting_down || task_queue.empty(); });
+	std::unique_lock<std::mutex> lock(mutex);
+	all_done_condition_variable.wait(lock, wait_predicate());
 }
 
 void worker_pool::run_task_loop() {
@@ -66,8 +66,8 @@ void worker_pool::run_task_loop() {
 		// 1. Get a valid task
 		pending_task task;
 		{
-			std::unique_lock<std::mutex> lk(mutex);
-			task_condition_variable.wait(lk, [this, &task]() { return is_shutting_down || task_queue.try_pop(task); });
+			std::unique_lock<std::mutex> lock(mutex);
+			task_condition_variable.wait(lock, [this, &task]() { return is_shutting_down || task_queue.try_pop(task); });
 			if (is_shutting_down) {
 				return;
 			}
@@ -79,7 +79,7 @@ void worker_pool::run_task_loop() {
 		// 3. If all is done, notify waiters
 		bool all_done;
 		{
-			std::lock_guard<std::mutex> lk(mutex);
+			std::lock_guard<std::mutex> lock(mutex);
 			all_done = task_queue.empty();
 		}
 		if (all_done) {
