@@ -59,7 +59,7 @@ public:
 	}
 
 	template<class Rep, class Period>
-	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
 		std::unique_lock<std::mutex> lock(mutex);
 		return condition_variable.wait_for(lock, timeout_duration, wait_predicate());
 	}

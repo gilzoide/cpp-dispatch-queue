@@ -113,31 +113,28 @@ public:
 
 	/**
 	 * Wait until all pending tasks finish processing.
-	 * @see std::future<T>::wait
 	 */
 	void wait();
 
 	/**
 	 * Wait until all pending tasks finish processing.
-	 * Blocks until specified `timeout_duration` has elapsed or the result becomes available, whichever comes first.
-	 * The return value indicates why `wait_for` returned.
-	 * @see std::future<T>::wait_for
+	 * Blocks until specified `timeout_duration` has elapsed or all queued tasks complete, whichever comes first.
+	 * @returns `false` if the timeout has expired, otherwise `true`.
 	 */
 	template<class Rep, class Period>
-	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
 		if (worker_pool) {
 			return worker_pool->wait_for(timeout_duration);
 		}
 		else {
-			return std::future_status::ready;
+			return true;
 		}
 	}
 
 	/**
 	 * Wait until all pending tasks finish processing.
-	 * Blocks until the specified `timeout_time` has been reached or the result becomes available, whichever comes first.
-	 * The return value indicates why `wait_until` returned.
-	 * @see std::future<T>::wait_until
+	 * Blocks until the specified `timeout_time` has been reached or all queued tasks complete, whichever comes first.
+	 * @returns `false` if the timeout has expired, otherwise `true`.
 	 */
 	template<class Clock, class Duration>
 	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
