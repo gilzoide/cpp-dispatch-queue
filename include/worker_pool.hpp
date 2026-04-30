@@ -5,7 +5,6 @@
 #include <mutex>
 #include <thread>
 
-#include "pending_task.hpp"
 #include "pending_task_queue.hpp"
 
 

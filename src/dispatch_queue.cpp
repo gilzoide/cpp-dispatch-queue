@@ -49,11 +49,11 @@ void dispatch_queue::clear() {
 }
 
 void dispatch_queue::main_loop() {
-	std::deque<pending_task> main_loop_tasks = worker_pool
+	std::deque<detail::pending_task> main_loop_tasks = worker_pool
 		? worker_pool->pop_main_loop_tasks()
 		: task_queue.pop_main_loop_tasks();
 	for (auto&& it : main_loop_tasks) {
-		it.work();
+		it();
 	}
 }
 

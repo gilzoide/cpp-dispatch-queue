@@ -25,8 +25,11 @@ endif()
 set(_DISPATCH_QUEUE_HEADERS
   "include/dispatch_queue.hpp"
   "include/function_result.hpp"
-  "include/pending_task.hpp"
+  "include/is_instance_of.hpp"
   "include/pending_task_queue.hpp"
+  "include/promise.hpp"
+  "include/task_future.hpp"
+  "include/task.hpp"
   "include/worker_pool.hpp"
 )
 

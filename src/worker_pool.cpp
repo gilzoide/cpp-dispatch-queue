@@ -74,7 +74,7 @@ void worker_pool::run_task_loop() {
 		}
 
 		// 2. Do some work
-		task.work();
+		task();
 
 		// 3. If all is done, notify waiters
 		bool all_done;

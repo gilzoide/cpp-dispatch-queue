@@ -2,12 +2,11 @@
 
 #include <deque>
 
-#include "pending_task.hpp"
-
-
 namespace dispatch_queue {
 
 namespace detail {
+
+using pending_task = std::function<void()>;
 
 class pending_task_queue {
 public:
