@@ -115,10 +115,10 @@ public:
 	 * If the task is pending (`get_state() == task_state::pending`), blocks until task finishes or until the specified `timeout_time` has been reached.
 	 * Otherwise returns immediately without blocking.
 	 *
-	 * @returns `std::future_status::timeout` if the timeout has expired, otherwise `std::future_status::ready`.
+	 * @returns `false` if the timeout has expired, otherwise `true`.
 	 */
 	template<class Clock, class Duration>
-	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
+	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
 		return future->wait_until(timeout_time);
 	}
 

@@ -55,28 +55,19 @@ public:
 
 	void wait() {
 		std::unique_lock<std::mutex> lock(mutex);
-		if (state != task_state::pending) {
-			return;
-		}
 		condition_variable.wait(lock, wait_predicate());
 	}
 
 	template<class Rep, class Period>
 	std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
 		std::unique_lock<std::mutex> lock(mutex);
-		if (state != task_state::pending) {
-			return std::future_status::ready;
-		}
 		return condition_variable.wait_for(lock, timeout_duration, wait_predicate());
 	}
 
 	template<class Clock, class Duration>
-	std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
 		std::unique_lock<std::mutex> lock(mutex);
-		if (state != task_state::pending) {
-			return std::future_status::ready;
-		}
-		return condition_variable.wait_for(lock, timeout_time, wait_predicate());
+		return condition_variable.wait_until(lock, timeout_time, wait_predicate());
 	}
 
 protected:
