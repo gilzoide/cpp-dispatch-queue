@@ -21,6 +21,14 @@ enum class task_state {
 
 namespace detail {
 
+#ifdef __cpp_exceptions
+	#define DISPATCH_QUEUE_TRY try
+	#define DISPATCH_QUEUE_CATCH(...) catch(__VA_ARGS__)
+#else
+	#define DISPATCH_QUEUE_TRY
+	#define DISPATCH_QUEUE_CATCH(...) if (0)
+#endif
+
 class task_future_base {
 	auto wait_predicate() {
 		return [this]{ return state != task_state::pending; };
@@ -145,17 +153,15 @@ public:
 
 	template<typename F, typename... Args>
 	void do_work(F&& work, Args&&... args) {
-#ifdef __cpp_exceptions
-		try {
-#endif
+		DISPATCH_QUEUE_TRY {
 			auto value = work(std::forward<Args>(args)...);
 			set_value(std::move(value));
-#ifdef __cpp_exceptions
 		}
-		catch (...) {
+		DISPATCH_QUEUE_CATCH(...) {
 			set_exception(std::current_exception());
 		}
-#endif
+
+		auto continuations = std::move(this->continuations);
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
@@ -229,19 +235,17 @@ public:
 		}
 	}
 
-template<typename F, typename... Args>
+	template<typename F, typename... Args>
 	void do_work(F&& work, Args&&... args) {
-#ifdef __cpp_exceptions
-		try {
-#endif
+		DISPATCH_QUEUE_TRY {
 			work(std::forward<Args>(args)...);
 			set_value();
-#ifdef __cpp_exceptions
 		}
-		catch (...) {
+		DISPATCH_QUEUE_CATCH(...) {
 			set_exception(std::current_exception());
 		}
-#endif
+
+		auto continuations = std::move(this->continuations);
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
