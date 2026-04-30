@@ -134,7 +134,12 @@ private:
 		}
 
 		void await_suspend(std::coroutine_handle<> cont) const {
-			t.future->then(cont);
+			t.future->then([cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
 		}
 
 		T await_resume() {
