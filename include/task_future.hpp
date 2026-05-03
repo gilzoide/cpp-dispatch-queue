@@ -82,6 +82,11 @@ protected:
 		: state(state)
 	{
 	}
+	task_future_base(private_construct, std::exception_ptr exception)
+		: state(task_state::exception)
+		, exception(exception)
+	{
+	}
 
 	task_future_base(const task_future_base&) = delete;
 	task_future_base& operator=(const task_future_base&) = delete;
@@ -93,8 +98,9 @@ class task_future : public task_future_base, public std::enable_shared_from_this
 public:
 	using value_type = T;
 
-	task_future(private_construct, task_state state)
-		: task_future_base(private_construct{}, state)
+	template<typename... Args>
+	task_future(private_construct, Args&&... args)
+		: task_future_base(private_construct{}, std::forward<Args>(args)...)
 		, empty()
 	{
 	}
@@ -115,7 +121,12 @@ public:
 	}
 	template<typename F>
 	static std::shared_ptr<task_future> create(F&& work) {
-		return std::make_shared<task_future>(private_construct{}, std::move(work()));
+		DISPATCH_QUEUE_TRY {
+			return std::make_shared<task_future>(private_construct{}, std::move(work()));
+		}
+		DISPATCH_QUEUE_CATCH(...) {
+			return std::make_shared<task_future>(private_construct{}, std::current_exception());
+		}
 	}
 
 	template<typename F>
@@ -189,8 +200,9 @@ class task_future<void> : public task_future_base, public std::enable_shared_fro
 public:
 	using value_type = void;
 
-	task_future(private_construct, task_state state)
-		: task_future_base(private_construct{}, state)
+	template<typename... Args>
+	task_future(private_construct, Args&&... args)
+		: task_future_base(private_construct{}, std::forward<Args>(args)...)
 	{
 	}
 
@@ -199,8 +211,13 @@ public:
 	}
 	template<typename F>
 	static std::shared_ptr<task_future> create(F&& work) {
-		work();
-		return std::make_shared<task_future>(private_construct{}, task_state::ready);
+		DISPATCH_QUEUE_TRY {
+			work();
+			return std::make_shared<task_future>(private_construct{}, task_state::ready);
+		}
+		DISPATCH_QUEUE_CATCH(...) {
+			return std::make_shared<task_future>(private_construct{}, std::current_exception());
+		}
 	}
 
 	template<typename F>
