@@ -153,6 +153,14 @@ private:
 public:
 	/**
 	 * Returns an awaiter that resumes coroutines on the task's continuation.
+	 *
+	 * @code
+	 * dispatch_queue::task<void> task my_coroutine() {
+	 *     auto task = dispatch_queue.dispatch([]{ ... });
+	 *     co_await task;
+	 *     do_something_after_task_finished();
+	 * }
+	 * @endcode
 	 */
 	task_awaiter operator co_await() const {
 		return task_awaiter(*this);

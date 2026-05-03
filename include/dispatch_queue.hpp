@@ -187,12 +187,26 @@ private:
 public:
 	/**
 	 * Returns an awaiter that resumes a coroutine using `dispatch` when `co_await`ed.
+	 *
+	 * @code
+	 * dispatch_queue::task<void> my_coroutine() {
+	 *     co_await dispatch_queue.dispatch();
+	 *     do_something_in_background();
+	 * }
+	 * @endcode
 	 */
 	dispatch_awaiter dispatch() {
 		return dispatch_awaiter(*this);
 	}
 	/**
 	 * Returns an awaiter that resumes a coroutine using `dispatch_main` when `co_await`ed.
+	 *
+	 * @code
+	 * dispatch_queue::task<void> my_coroutine() {
+	 *     co_await dispatch_queue.dispatch_main();
+	 *     do_something_in_main_loop();
+	 * }
+	 * @endcode
 	 */
 	dispatch_main_awaiter dispatch_main() {
 		return dispatch_main_awaiter(*this);
