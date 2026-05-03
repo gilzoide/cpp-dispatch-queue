@@ -3,7 +3,6 @@
 namespace dispatch_queue {
 
 dispatch_queue::dispatch_queue()
-	: dispatch_queue(0)
 {
 }
 

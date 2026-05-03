@@ -13,8 +13,8 @@ namespace dispatch_queue {
 class dispatch_queue {
 public:
 	/**
-	 * Create a synchronous dispatch queue.
-	 * In synchronous mode, tasks are executed immediately when calling `dispatch`.
+	 * Create an immediate dispatch queue.
+	 * In immediate mode, tasks are executed immediately when calling `dispatch`.
 	 */
 	dispatch_queue();
 
@@ -28,12 +28,12 @@ public:
 	 * Initializes dispatch queue with `thread_count` background threads and a worker initialization functor.
 	 *
 	 * @param thread_count  Number of background threads used to run tasks.
-	 *                      If 0, the dispatch queue is created in synchronous mode.
+	 *                      If 0, the dispatch queue is created in immediate mode.
 	 *                      If 1, tasks will run serially in background, one at a time, without any concurrency.
 	 *                      Otherwise, `thread_count` threads will be created and tasks may run concurrently.
 	 *                      Pass a negative number to use the default value of `std::thread::hardware_concurrency()` threads.
 	 * @param worker_init  Functor called inside worker threads for initialization, receiving as argument the worker index.
-	 *                     May be used to set the thread name, for example.
+	 *                     May be used to set the thread name or initialize thread local variables, for example.
 	 */
 	template<typename Fn>
 	dispatch_queue(int thread_count, Fn&& worker_init) {
@@ -55,7 +55,7 @@ public:
 
 	/**
 	 * Dispatch a task that calls `f` with forwarded arguments `args`.
-	 * If the dispatch queue is in synchronous mode, the task is processed immediately in the calling thread.
+	 * If the dispatch queue is in immediate mode, the task is processed immediately in the calling thread.
 	 * @param f Functor to be executed
 	 * @param args Arguments forwarded to `f`
 	 * @returns Future for getting `f` result.
@@ -71,6 +71,7 @@ public:
 	 * @param f Functor to be executed
 	 * @param args Arguments forwarded to `f`
 	 * @returns Future for getting `f` result.
+	 * @see main_loop
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_main(F&& f, Args&&... args) {
@@ -84,7 +85,7 @@ public:
 
 	/**
 	 * Number of threads used for processing tasks.
-	 * This will be 0 on synchronous mode.
+	 * This will be 0 in immediate mode.
 	 */
 	int thread_count() const;
 
@@ -106,7 +107,7 @@ public:
 
 	/**
 	 * Invoke main loop tasks dispatched using `dispatch_main`.
-	 * This should be called in you application main loop.
+	 * This should be called in your application's main loop.
 	 */
 	void main_loop();
 
@@ -118,7 +119,7 @@ public:
 	/**
 	 * Wait until all pending tasks finish processing.
 	 * Blocks until specified `timeout_duration` has elapsed or all queued tasks complete, whichever comes first.
-	 * @returns `false` if the timeout has expired, otherwise `true`.
+	 * @returns `true` if all tasks finished processing, otherwise `false`.
 	 */
 	template<class Rep, class Period>
 	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
@@ -133,7 +134,7 @@ public:
 	/**
 	 * Wait until all pending tasks finish processing.
 	 * Blocks until the specified `timeout_time` has been reached or all queued tasks complete, whichever comes first.
-	 * @returns `false` if the timeout has expired, otherwise `true`.
+	 * @returns `true` if all tasks finished processing, otherwise `false`.
 	 */
 	template<class Clock, class Duration>
 	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
@@ -146,8 +147,8 @@ public:
 	}
 
 	/**
-	 * Cancel pending tasks, wait and release the used Threads.
-	 * The queue now runs in synchronous mode.
+	 * Cancel pending tasks, wait and release the used threads.
+	 * The queue now runs in immediate mode.
 	 * It is safe to call this more than once.
 	 */
 	void shutdown();

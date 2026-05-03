@@ -33,7 +33,7 @@ public:
 	 * Add a continuation `f` that is guaranteed to run after this task finishes.
 	 *
 	 * If the task is not finished yet, `f` will run right after the task finishes in the same thread where the task ran.
-	 * Otherwise, `f` will run immediately in the current thread.
+	 * Otherwise, `f` will run immediately in the calling thread.
 	 */
 	template<typename F>
 	requires (detail::is_instance_of<T, task>::value)
@@ -53,7 +53,7 @@ public:
 	 * Add a continuation `f` that is guaranteed to run after this task finishes.
 	 *
 	 * If the task is not finished yet, `f` will run right after the task finishes in the same thread where the task ran.
-	 * Otherwise, `f` will run immediately in the current thread.
+	 * Otherwise, `f` will run immediately in the calling thread.
 	 */
 	template<typename F>
 	auto then(F&& f) const {
@@ -102,7 +102,7 @@ public:
 	 * If the task is pending (`get_state() == task_state::pending`), blocks until task finishes or until the specified `timeout_duration` has elapsed.
 	 * Otherwise returns immediately without blocking.
 	 *
-	 * @returns `false` if the timeout has expired, otherwise `true`.
+	 * @returns `true` if the task is finished, otherwise `false`.
 	 */
 	template<class Rep, class Period>
 	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
@@ -115,7 +115,7 @@ public:
 	 * If the task is pending (`get_state() == task_state::pending`), blocks until task finishes or until the specified `timeout_time` has been reached.
 	 * Otherwise returns immediately without blocking.
 	 *
-	 * @returns `false` if the timeout has expired, otherwise `true`.
+	 * @returns `true` if the task is finished, otherwise `false`.
 	 */
 	template<class Clock, class Duration>
 	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
@@ -162,6 +162,7 @@ public:
 private:
 	std::shared_ptr<detail::task_future<T>> future;
 
+	/// Helper function for creating a task of another type from within this class
 	template<typename U>
 	static task<U> to_task(std::shared_ptr<detail::task_future<U>> future) {
 		return task<U>(future);
