@@ -2,9 +2,10 @@
 
 #include <condition_variable>
 #include <exception>
-#include <future>
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include "function_result.hpp"
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <future>
 #include <functional>
 #include <utility>
 
