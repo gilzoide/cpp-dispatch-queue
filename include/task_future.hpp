@@ -17,7 +17,7 @@ enum class task_state {
 	/// Task is ready and the result value is readily available
 	ready,
 	/// Task failed with an exception
-	exception,
+	failed,
 };
 
 namespace detail {
@@ -48,7 +48,7 @@ public:
 	void set_exception(std::exception_ptr exception) {
 		{
 			std::lock_guard<std::mutex> lock(mutex);
-			state = task_state::exception;
+			state = task_state::failed;
 			this->exception = exception;
 		}
 		condition_variable.notify_all();
@@ -84,7 +84,7 @@ protected:
 	{
 	}
 	task_future_base(private_construct, std::exception_ptr exception)
-		: state(task_state::exception)
+		: state(task_state::failed)
 		, exception(exception)
 	{
 	}
@@ -123,7 +123,7 @@ public:
 	static std::shared_ptr<task_future> create_ready(T&& value) {
 		return std::make_shared<task_future>(private_construct{}, std::move(value));
 	}
-	static std::shared_ptr<task_future> create_exception(std::exception_ptr exception) {
+	static std::shared_ptr<task_future> create_failed(std::exception_ptr exception) {
 		return std::make_shared<task_future>(private_construct{}, exception);
 	}
 	template<typename F>
@@ -133,7 +133,7 @@ public:
 			return create_ready(std::move(value));
 		}
 		DISPATCH_QUEUE_CATCH(...) {
-			return create_exception(std::current_exception());
+			return create_failed(std::current_exception());
 		}
 	}
 
@@ -220,7 +220,7 @@ public:
 	static std::shared_ptr<task_future> create_ready() {
 		return std::make_shared<task_future>(private_construct{}, task_state::ready);
 	}
-	static std::shared_ptr<task_future> create_exception(std::exception_ptr exception) {
+	static std::shared_ptr<task_future> create_failed(std::exception_ptr exception) {
 		return std::make_shared<task_future>(private_construct{}, exception);
 	}
 	template<typename F>
@@ -230,7 +230,7 @@ public:
 			return create_ready();
 		}
 		DISPATCH_QUEUE_CATCH(...) {
-			return create_exception(std::current_exception());
+			return create_failed(std::current_exception());
 		}
 	}
 
