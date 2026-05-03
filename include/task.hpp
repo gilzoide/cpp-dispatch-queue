@@ -38,7 +38,7 @@ public:
 	template<typename F>
 	requires (detail::is_instance_of<T, task>::value)
 	auto then(F&& f) const {
-		auto nested_future = detail::task_future<detail::function_result<F, T>>::create();
+		auto nested_future = detail::task_future<detail::function_result<F, T>>::create_pending();
 		task value_this = *this;
 		future->then([=]() {
 			value_this.get().then([=](auto t) {

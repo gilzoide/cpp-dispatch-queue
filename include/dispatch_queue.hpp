@@ -207,12 +207,12 @@ private:
 	task<Ret> dispatch_internal(bool run_on_main_loop, F&& f, Args&&... args) {
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
-			auto future = detail::task_future<Ret>::create(task_state::pending);
+			auto future = detail::task_future<Ret>::create_pending();
 			worker_pool->enqueue_task({ future->wrap(work) }, run_on_main_loop);
 			return task<Ret>(future);
 		}
 		else if (run_on_main_loop) {
-			auto future = detail::task_future<Ret>::create(task_state::pending);
+			auto future = detail::task_future<Ret>::create_pending();
 			task_queue.push({ future->wrap(work) }, run_on_main_loop);
 			return task<Ret>(future);
 		}

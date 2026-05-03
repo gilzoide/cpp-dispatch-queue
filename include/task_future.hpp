@@ -116,22 +116,29 @@ public:
 		}
 	}
 
-	static std::shared_ptr<task_future> create(task_state state = task_state::pending) {
-		return std::make_shared<task_future>(private_construct{}, state);
+	static std::shared_ptr<task_future> create_pending() {
+		return std::make_shared<task_future>(private_construct{}, task_state::pending);
+	}
+	static std::shared_ptr<task_future> create_ready(T&& value) {
+		return std::make_shared<task_future>(private_construct{}, std::move(value));
+	}
+	static std::shared_ptr<task_future> create_exception(std::exception_ptr exception) {
+		return std::make_shared<task_future>(private_construct{}, exception);
 	}
 	template<typename F>
 	static std::shared_ptr<task_future> create(F&& work) {
 		DISPATCH_QUEUE_TRY {
-			return std::make_shared<task_future>(private_construct{}, std::move(work()));
+			auto value = work();
+			return create_ready(std::move(value));
 		}
 		DISPATCH_QUEUE_CATCH(...) {
-			return std::make_shared<task_future>(private_construct{}, std::current_exception());
+			return create_exception(std::current_exception());
 		}
 	}
 
 	template<typename F>
 	auto then(F&& f) {
-		auto continuation_future = task_future<function_result<F>>::create();
+		auto continuation_future = task_future<function_result<F>>::create_pending();
 		std::unique_lock<std::mutex> lock(mutex);
 		if (state == task_state::pending) {
 			continuations.push_back([=]() {
@@ -206,23 +213,29 @@ public:
 	{
 	}
 
-	static std::shared_ptr<task_future> create(task_state state = task_state::pending) {
-		return std::make_shared<task_future>(private_construct{}, state);
+	static std::shared_ptr<task_future> create_pending() {
+		return std::make_shared<task_future>(private_construct{}, task_state::pending);
+	}
+	static std::shared_ptr<task_future> create_ready() {
+		return std::make_shared<task_future>(private_construct{}, task_state::ready);
+	}
+	static std::shared_ptr<task_future> create_exception(std::exception_ptr exception) {
+		return std::make_shared<task_future>(private_construct{}, exception);
 	}
 	template<typename F>
 	static std::shared_ptr<task_future> create(F&& work) {
 		DISPATCH_QUEUE_TRY {
 			work();
-			return std::make_shared<task_future>(private_construct{}, task_state::ready);
+			return create_ready();
 		}
 		DISPATCH_QUEUE_CATCH(...) {
-			return std::make_shared<task_future>(private_construct{}, std::current_exception());
+			return create_exception(std::current_exception());
 		}
 	}
 
 	template<typename F>
 	auto then(F&& f) {
-		auto continuation_future = task_future<function_result<F>>::create();
+		auto continuation_future = task_future<function_result<F>>::create_pending();
 		std::unique_lock<std::mutex> lock(mutex);
 		if (state == task_state::pending) {
 			continuations.push_back([=]() {

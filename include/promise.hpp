@@ -24,7 +24,7 @@ public:
 	}
 
 private:
-	std::shared_ptr<detail::task_future<T>> future = detail::task_future<T>::create();
+	std::shared_ptr<detail::task_future<T>> future = detail::task_future<T>::create_pending();
 };
 
 
@@ -42,7 +42,7 @@ public:
 	}
 
 private:
-	std::shared_ptr<detail::task_future<void>> future = detail::task_future<void>::create();
+	std::shared_ptr<detail::task_future<void>> future = detail::task_future<void>::create_pending();
 };
 
 } // end namespace detail
