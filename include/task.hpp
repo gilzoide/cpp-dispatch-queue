@@ -23,9 +23,17 @@ class task {
 public:
 	using value_type = T;
 
+	task() = default;
 	task(std::shared_ptr<detail::task_future<T>> future)
 		: future(future)
 	{
+	}
+
+	/**
+	 * Checks if the task refers to a shared state.
+	 */
+	bool valid() const {
+		return (bool)future;
 	}
 
 #ifdef __cpp_concepts

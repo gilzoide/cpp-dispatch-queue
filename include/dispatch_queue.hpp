@@ -90,7 +90,7 @@ public:
 	int thread_count() const;
 
 	/**
-	 * Returns the number of queued tasks;
+	 * Returns the number of queued tasks.
 	 */
 	size_t size() const;
 
