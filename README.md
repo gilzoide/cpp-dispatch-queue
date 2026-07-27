@@ -24,6 +24,7 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
   + `co_await` other tasks to resume the coroutine as the task's continuation
   + Use `co_await dispatch_queue.dispatch()` to continue coroutine in a dispatch queue's background loop
   + Use `co_await dispatch_queue.dispatch_main()` to continue coroutine in a dispatch queue's main loop
+  + Use `co_await dispatch_queue.dispatch_tagged()` to continue coroutine in a dispatch queue's background loop using the provided tag
 - Supports compiling with `-fno-exceptions` and `-fno-rtti`
 - Unified implementation file [src/dispatch_queue-one.cpp](src/dispatch_queue-one.cpp), easy to integrate in any project
 
@@ -131,6 +132,11 @@ dispatch_queue::task<void> my_coro() {
     // co_await .dispatch_main()
     // coroutine continues within dispatch queue's main loop
     co_await dispatcher.dispatch_main();
+    do_something_in_main_loop();
+
+    // co_await .dispatch_tagged(tag)
+    // coroutine continues within dispatch queue using the provided tag
+    co_await dispatcher.dispatch_tagged(SAVE_FILE_IO);
     do_something_in_main_loop();
 }
 

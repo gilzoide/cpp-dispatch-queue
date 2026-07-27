@@ -200,6 +200,22 @@ private:
         }
         void await_resume() {}
 	};
+
+	struct dispatch_tagged_awaiter {
+		dispatch_queue& dispatch_queue;
+		int tag;
+
+		bool await_ready() const noexcept { return false; }
+        void await_suspend(std::coroutine_handle<> cont) const {
+            dispatch_queue.dispatch_tagged(tag, [cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
+        }
+        void await_resume() {}
+	};
 public:
 	/**
 	 * Returns an awaiter that resumes a coroutine using `dispatch` when `co_await`ed.
@@ -214,6 +230,7 @@ public:
 	dispatch_awaiter dispatch() {
 		return dispatch_awaiter(*this);
 	}
+
 	/**
 	 * Returns an awaiter that resumes a coroutine using `dispatch_main` when `co_await`ed.
 	 *
@@ -226,6 +243,20 @@ public:
 	 */
 	dispatch_main_awaiter dispatch_main() {
 		return dispatch_main_awaiter(*this);
+	}
+
+	/**
+	 * Returns an awaiter that resumes a coroutine using `dispatch_tagged` when `co_await`ed.
+	 *
+	 * @code
+	 * dispatch_queue::task<void> my_coroutine() {
+	 *     co_await dispatch_queue.dispatch_tagged(tag);
+	 *     do_something_with_tag();
+	 * }
+	 * @endcode
+	 */
+	dispatch_tagged_awaiter dispatch_tagged(int tag) {
+		return dispatch_tagged_awaiter(*this, tag);
 	}
 #endif
 
