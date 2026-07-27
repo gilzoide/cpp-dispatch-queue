@@ -36,8 +36,8 @@ public:
 	int thread_count() const;
 	size_t size();
 
-	void enqueue_task(pending_task&& task, bool run_on_main_loop);
-	std::deque<pending_task> pop_main_loop_tasks();
+	void enqueue_task(task_type type, task_function&& task, int tag);
+	std::list<task_function> pop_main_loop_tasks();
 	void clear();
 	void shutdown();
 
@@ -61,6 +61,7 @@ private:
 	std::condition_variable all_done_condition_variable;
 	std::vector<std::thread> worker_threads;
 	pending_task_queue& task_queue;
+	int idle_threads = 0;
 	bool is_shutting_down;
 
 	void run_task_loop();

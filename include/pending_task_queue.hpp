@@ -1,12 +1,31 @@
 #pragma once
 
-#include <deque>
+#include <limits>
+#include <list>
+#include <unordered_map>
 
 namespace dispatch_queue {
 
+static constexpr int NULL_TAG = std::numeric_limits<int>::min();
+
 namespace detail {
 
-using pending_task = std::function<void()>;
+enum class task_type {
+	main,
+	background,
+	tagged,
+};
+
+using task_function = std::function<void()>;
+
+struct pending_task {
+	task_function implementation;
+	int tag = NULL_TAG;
+
+	void operator()() const {
+		implementation();
+	}
+};
 
 class pending_task_queue {
 public:
@@ -14,13 +33,14 @@ public:
 	size_t size() const;
 	void clear();
 
-	void push(pending_task&& task, bool run_on_main_loop);
+	bool push(task_type type, task_function&& task, int tag = NULL_TAG);
 	bool try_pop(pending_task& task);
-	std::deque<pending_task> pop_main_loop_tasks();
+	std::list<task_function> pop_main_loop_tasks();
 
 private:
-	std::deque<pending_task> background_tasks;
-	std::deque<pending_task> main_loop_tasks;
+	std::unordered_map<int, std::list<pending_task>> tagged_tasks;
+	std::list<pending_task> background_tasks;
+	std::list<task_function> main_loop_tasks;
 };
 
 } // end namespace detail

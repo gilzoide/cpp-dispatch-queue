@@ -4,8 +4,9 @@
 #include <utility>
 
 #include "function_result.hpp"
-#include "task.hpp"
+#include "pending_task_queue.hpp"
 #include "promise.hpp"
+#include "task.hpp"
 #include "worker_pool.hpp"
 
 namespace dispatch_queue {
@@ -41,7 +42,7 @@ public:
 			thread_count = std::thread::hardware_concurrency();
 		}
 		if (thread_count > 0) {
-			worker_pool = std::make_unique<detail::worker_pool>(task_queue, thread_count, worker_init);
+			worker_pool = std::make_unique<detail::worker_pool>(task_queue, thread_count, std::move(worker_init));
 		}
 	}
 
@@ -62,7 +63,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch(F&& f, Args&&... args) {
-		return dispatch_internal(false, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::background, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -75,7 +76,22 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_main(F&& f, Args&&... args) {
-		return dispatch_internal(true, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::main, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+
+	/**
+	 * Dispatch a tagged task that calls `f` with forwarded arguments `args`.
+	 * Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
+	 * Use this to serialize different task types without having to create separate dispatch queues.
+	 * If the dispatch queue is in immediate mode, the task is processed immediately in the calling thread.
+	 * @param tag The tag associated to the task
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
+	 * @returns Future for getting `f` result.
+	 */
+	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch_tag(int tag, F&& f, Args&&... args) {
+		return dispatch_internal(detail::task_type::tagged, tag, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -218,16 +234,16 @@ private:
 	detail::pending_task_queue task_queue;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_internal(bool run_on_main_loop, F&& f, Args&&... args) {
+	task<Ret> dispatch_internal(detail::task_type type, int tag, F&& f, Args&&... args) {
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
 			auto future = detail::task_future<Ret>::create_pending();
-			worker_pool->enqueue_task({ future->wrap(work) }, run_on_main_loop);
+			worker_pool->enqueue_task(type, { future->wrap(work) }, tag);
 			return task<Ret>(future);
 		}
-		else if (run_on_main_loop) {
+		else if (type == detail::task_type::main) {
 			auto future = detail::task_future<Ret>::create_pending();
-			task_queue.push({ future->wrap(work) }, run_on_main_loop);
+			task_queue.push(type, { future->wrap(work) });
 			return task<Ret>(future);
 		}
 		else {
