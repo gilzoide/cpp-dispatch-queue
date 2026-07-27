@@ -90,7 +90,7 @@ public:
 	 * @returns Future for getting `f` result.
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_tag(int tag, F&& f, Args&&... args) {
+	task<Ret> dispatch_tagged(int tag, F&& f, Args&&... args) {
 		return dispatch_internal(detail::task_type::tagged, tag, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 

@@ -12,6 +12,9 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
 - Use `dispatch_queue.dispatch_main(f, args...)` to dispatch "main loop" tasks
   + Users must call `dispatch_queue.main_loop()` manually where appropriate to run queued main loop tasks
   + Useful for synchronizing state calculated in background tasks with the application's main loop
+- Use `dispatch_queue.dispatch_tagged(tag, f, args...)` to dispatch tagged tasks
+  + Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
+    Use this to serialize different task types without having to create separate dispatch queues.
 - Returned `dispatch_queue::task<T>` from dispatch methods are similar to `std::shared_future`, with the following additions:
   + Use `task.get_state()` to get whether task is pending, ready or failed with exception
   + Use `task.then(f)` to add a continuation function that runs when task finishes
@@ -97,6 +100,16 @@ while (!ApplicationShouldExit()) {
     // Inside your application's main loop...
     dispatcher.main_loop();
 }
+
+// Queue tagged tasks
+// Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
+enum TaskTags {
+    SAVE_FILE_IO,
+};
+// The three following tasks will run one at a time, even if dispatch queue has more idle threads
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
 
 
 ///////////////////////////////////////////////////////////
