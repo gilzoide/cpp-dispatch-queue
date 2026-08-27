@@ -12,6 +12,9 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
 - Use `dispatch_queue.dispatch_main(f, args...)` to dispatch "main loop" tasks
   + Users must call `dispatch_queue.main_loop()` manually where appropriate to run queued main loop tasks
   + Useful for synchronizing state calculated in background tasks with the application's main loop
+- Use `dispatch_queue.dispatch_tagged(tag, f, args...)` to dispatch tagged tasks
+  + Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
+    Use this to serialize different task types without having to create separate dispatch queues.
 - Returned `dispatch_queue::task<T>` from dispatch methods are similar to `std::shared_future`, with the following additions:
   + Use `task.get_state()` to get whether task is pending, ready or failed with exception
   + Use `task.then(f)` to add a continuation function that runs when task finishes
@@ -21,6 +24,7 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
   + `co_await` other tasks to resume the coroutine as the task's continuation
   + Use `co_await dispatch_queue.dispatch()` to continue coroutine in a dispatch queue's background loop
   + Use `co_await dispatch_queue.dispatch_main()` to continue coroutine in a dispatch queue's main loop
+  + Use `co_await dispatch_queue.dispatch_tagged()` to continue coroutine in a dispatch queue's background loop using the provided tag
 - Supports compiling with `-fno-exceptions` and `-fno-rtti`
 - Unified implementation file [src/dispatch_queue-one.cpp](src/dispatch_queue-one.cpp), easy to integrate in any project
 
@@ -98,6 +102,16 @@ while (!ApplicationShouldExit()) {
     dispatcher.main_loop();
 }
 
+// Queue tagged tasks
+// Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
+enum TaskTags {
+    SAVE_FILE_IO,
+};
+// The three following tasks will run one at a time, even if dispatch queue has more idle threads
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+
 
 ///////////////////////////////////////////////////////////
 // 3. Built-in C++20 coroutine support
@@ -118,6 +132,11 @@ dispatch_queue::task<void> my_coro() {
     // co_await .dispatch_main()
     // coroutine continues within dispatch queue's main loop
     co_await dispatcher.dispatch_main();
+    do_something_in_main_loop();
+
+    // co_await .dispatch_tagged(tag)
+    // coroutine continues within dispatch queue using the provided tag
+    co_await dispatcher.dispatch_tagged(SAVE_FILE_IO);
     do_something_in_main_loop();
 }
 

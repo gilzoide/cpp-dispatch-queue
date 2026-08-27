@@ -17,15 +17,19 @@ size_t worker_pool::size() {
 	return task_queue.size();
 }
 
-void worker_pool::enqueue_task(pending_task&& task, bool run_on_main_loop) {
+void worker_pool::enqueue_task(task_type type, task_function&& task, int tag) {
+	bool should_wake_thread;
 	{
 		std::lock_guard<std::mutex> lock(mutex);
-		task_queue.push(std::move(task), run_on_main_loop);
+		bool has_new_background_task = task_queue.push(type, std::move(task), tag);
+		should_wake_thread = has_new_background_task && idle_threads;
 	}
-	task_condition_variable.notify_one();
+	if (should_wake_thread) {
+		task_condition_variable.notify_one();
+	}
 }
 
-std::deque<pending_task> worker_pool::pop_main_loop_tasks() {
+std::list<task_function> worker_pool::pop_main_loop_tasks() {
 	std::lock_guard<std::mutex> lock(mutex);
 	return task_queue.pop_main_loop_tasks();
 }
@@ -53,6 +57,7 @@ void worker_pool::shutdown() {
 		}
 	}
 	worker_threads.clear();
+	idle_threads = 0;
 	is_shutting_down = false;
 }
 
@@ -62,12 +67,16 @@ void worker_pool::wait() {
 }
 
 void worker_pool::run_task_loop() {
+	pending_task task;
 	while (true) {
 		// 1. Get a valid task
-		pending_task task;
 		{
 			std::unique_lock<std::mutex> lock(mutex);
-			task_condition_variable.wait(lock, [this, &task]() { return is_shutting_down || task_queue.try_pop(task); });
+			if (!task_queue.try_pop(task)) {
+				++idle_threads;
+				task_condition_variable.wait(lock, [this, &task]() { return is_shutting_down || task_queue.try_pop(task); });
+				--idle_threads;
+			}
 			if (is_shutting_down) {
 				return;
 			}
