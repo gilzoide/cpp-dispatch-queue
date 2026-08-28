@@ -7,6 +7,7 @@
 #include "detail/pending_task_queue.hpp"
 #include "detail/promise.hpp"
 #include "detail/worker_pool.hpp"
+#include "task_tag.hpp"
 #include "task.hpp"
 
 namespace dispatch_queue {
@@ -63,7 +64,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch(F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::background, detail::NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::background, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -76,7 +77,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_main(F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::main, detail::NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::main, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -90,7 +91,7 @@ public:
 	 * @returns Future for getting `f` result.
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_tagged(int tag, F&& f, Args&&... args) {
+	task<Ret> dispatch_tagged(task_tag tag, F&& f, Args&&... args) {
 		return dispatch_internal(detail::task_type::tagged, tag, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
@@ -203,7 +204,7 @@ private:
 
 	struct dispatch_tagged_awaiter {
 		dispatch_queue& dispatch_queue;
-		int tag;
+		task_tag tag;
 
 		bool await_ready() const noexcept { return false; }
         void await_suspend(std::coroutine_handle<> cont) const {
@@ -255,7 +256,7 @@ public:
 	 * }
 	 * @endcode
 	 */
-	dispatch_tagged_awaiter dispatch_tagged(int tag) {
+	dispatch_tagged_awaiter dispatch_tagged(task_tag tag) {
 		return dispatch_tagged_awaiter(*this, tag);
 	}
 #endif
@@ -265,7 +266,7 @@ private:
 	detail::pending_task_queue task_queue;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_internal(detail::task_type type, int tag, F&& f, Args&&... args) {
+	task<Ret> dispatch_internal(detail::task_type type, task_tag tag, F&& f, Args&&... args) {
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
 			auto future = detail::task_future<Ret>::create_pending();

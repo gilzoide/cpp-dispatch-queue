@@ -17,7 +17,7 @@ size_t worker_pool::size() {
 	return task_queue.size();
 }
 
-void worker_pool::enqueue_task(task_type type, task_function&& task, int tag) {
+void worker_pool::enqueue_task(task_type type, task_function&& task, task_tag tag) {
 	bool should_wake_thread;
 	{
 		std::lock_guard<std::mutex> lock(mutex);

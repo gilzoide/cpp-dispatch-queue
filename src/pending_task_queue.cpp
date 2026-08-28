@@ -16,33 +16,35 @@ void pending_task_queue::clear() {
 	background_tasks.clear();
 }
 
-bool pending_task_queue::push(task_type type, task_function&& task, int tag) {
+bool pending_task_queue::push(task_type type, task_function&& task, task_tag tag) {
 	switch (type) {
 		case task_type::main:
 			main_loop_tasks.push_back({ std::move(task) });
 			return false;
 
+		case task_type::tagged:
+			if (tag != NULL_TAG) {
+#ifdef __cpp_lib_unordered_map_try_emplace
+				auto pair = tagged_tasks.try_emplace(tag, std::list<pending_task>{});
+#else
+				auto pair = tagged_tasks.emplace(tag, std::list<pending_task>{});
+#endif
+				if (pair.second) {
+					// tag didn't exist, task is readily available to be processed
+					background_tasks.push_back({ std::move(task), tag });
+					return true;
+				}
+				else {
+					// tag exists and is being processed: queue task until tag gets unblocked
+					pair.first->second.push_back({ std::move(task), tag });
+					return false;
+				}
+			}
+			[[fallthrough]];
+
 		case task_type::background:
 			background_tasks.push_back({ std::move(task), NULL_TAG });
 			return true;
-
-		case task_type::tagged: {
-#ifdef __cpp_lib_unordered_map_try_emplace
-			auto pair = tagged_tasks.try_emplace(tag, std::list<pending_task>{});
-#else
-			auto pair = tagged_tasks.emplace(tag, std::list<pending_task>{});
-#endif
-			if (pair.second) {
-				// tag didn't exist, task is readily available to be processed
-				background_tasks.push_back({ std::move(task), tag });
-				return true;
-			}
-			else {
-				// tag exists and is being processed: queue task until tag gets unblocked
-				pair.first->second.push_back({ std::move(task), tag });
-				return false;
-			}
-		}
 
 		default:
 			return false;
@@ -50,7 +52,7 @@ bool pending_task_queue::push(task_type type, task_function&& task, int tag) {
 }
 
 bool pending_task_queue::try_pop(pending_task& task) {
-	int previous_tag = task.tag;
+	task_tag previous_tag = task.tag;
 	if (previous_tag != NULL_TAG) {
 		auto it = tagged_tasks.find(previous_tag);
 		if (it->second.empty()) {

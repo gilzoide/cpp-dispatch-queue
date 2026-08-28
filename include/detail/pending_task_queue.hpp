@@ -4,11 +4,11 @@
 #include <list>
 #include <unordered_map>
 
+#include "../task_tag.hpp"
+
 namespace dispatch_queue {
 
 namespace detail {
-
-static constexpr int NULL_TAG = std::numeric_limits<int>::min();
 
 enum class task_type {
 	main,
@@ -20,7 +20,7 @@ using task_function = std::function<void()>;
 
 struct pending_task {
 	task_function implementation;
-	int tag = NULL_TAG;
+	task_tag tag = NULL_TAG;
 
 	void operator()() const {
 		implementation();
@@ -33,7 +33,7 @@ public:
 	size_t size() const;
 	void clear();
 
-	bool push(task_type type, task_function&& task, int tag = NULL_TAG);
+	bool push(task_type type, task_function&& task, task_tag tag = NULL_TAG);
 	bool try_pop(pending_task& task);
 	std::list<task_function> pop_main_loop_tasks();
 
