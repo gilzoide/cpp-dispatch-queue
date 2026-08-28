@@ -1,4 +1,4 @@
-#include "../include/worker_pool.hpp"
+#include "../include/detail/worker_pool.hpp"
 
 namespace dispatch_queue {
 
@@ -74,7 +74,7 @@ void worker_pool::run_task_loop() {
 			std::unique_lock<std::mutex> lock(mutex);
 			if (!task_queue.try_pop(task)) {
 				++idle_threads;
-				task_condition_variable.wait(lock, [this, &task]() { return is_shutting_down || task_queue.try_pop(task); });
+				task_condition_variable.wait(lock, [this, &task]{ return is_shutting_down || task_queue.try_pop(task); });
 				--idle_threads;
 			}
 			if (is_shutting_down) {

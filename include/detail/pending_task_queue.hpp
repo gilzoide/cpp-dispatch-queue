@@ -6,9 +6,9 @@
 
 namespace dispatch_queue {
 
-static constexpr int NULL_TAG = std::numeric_limits<int>::min();
-
 namespace detail {
+
+static constexpr int NULL_TAG = std::numeric_limits<int>::min();
 
 enum class task_type {
 	main,

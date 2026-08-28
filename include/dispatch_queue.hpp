@@ -3,11 +3,11 @@
 #include <functional>
 #include <utility>
 
-#include "function_result.hpp"
-#include "pending_task_queue.hpp"
-#include "promise.hpp"
+#include "detail/function_result.hpp"
+#include "detail/pending_task_queue.hpp"
+#include "detail/promise.hpp"
+#include "detail/worker_pool.hpp"
 #include "task.hpp"
-#include "worker_pool.hpp"
 
 namespace dispatch_queue {
 
@@ -63,7 +63,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch(F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::background, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::background, detail::NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -76,7 +76,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_main(F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::main, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::main, detail::NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**

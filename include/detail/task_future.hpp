@@ -8,17 +8,9 @@
 #include <vector>
 
 #include "function_result.hpp"
+#include "../task_state.hpp"
 
 namespace dispatch_queue {
-
-enum class task_state {
-	/// Task is either queued for execution or still running
-	pending,
-	/// Task finished successfully and the result value is readily available
-	ready,
-	/// Task failed with an exception
-	failed,
-};
 
 namespace detail {
 

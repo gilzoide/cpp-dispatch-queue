@@ -4,9 +4,10 @@
 #include <coroutine>
 #endif
 
-#include "function_result.hpp"
-#include "is_instance_of.hpp"
-#include "task_future.hpp"
+#include "detail/function_result.hpp"
+#include "detail/is_instance_of.hpp"
+#include "detail/task_future.hpp"
+#include "task_state.hpp"
 
 namespace dispatch_queue {
 
@@ -163,7 +164,7 @@ public:
 	 * Returns an awaiter that resumes coroutines on the task's continuation.
 	 *
 	 * @code
-	 * dispatch_queue::task<void> task my_coroutine() {
+	 * dispatch_queue::task<void> my_coroutine() {
 	 *     auto task = dispatch_queue.dispatch([]{ ... });
 	 *     co_await task;
 	 *     do_something_after_task_finished();
