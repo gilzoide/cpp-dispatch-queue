@@ -7,6 +7,8 @@ namespace dispatch_queue {
  * @see task
  */
 enum class task_state {
+	/// Task was created without a future and is invalid
+	invalid,
 	/// Task is either queued for execution or still running
 	pending,
 	/// Task finished successfully and the result value is readily available

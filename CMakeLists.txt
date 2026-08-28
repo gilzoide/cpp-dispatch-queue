@@ -23,14 +23,17 @@ else()
   )
 endif()
 set(_DISPATCH_QUEUE_HEADERS
+  "include/detail/function_result.hpp"
+  "include/detail/is_instance_of.hpp"
+  "include/detail/pending_task_queue.hpp"
+  "include/detail/promise.hpp"
+  "include/detail/task_future.hpp"
+  "include/detail/worker_pool.hpp"
   "include/dispatch_queue.hpp"
-  "include/function_result.hpp"
-  "include/is_instance_of.hpp"
-  "include/pending_task_queue.hpp"
-  "include/promise.hpp"
-  "include/task_future.hpp"
+  "include/task_error.hpp"
+  "include/task_state.hpp"
+  "include/task_tag.hpp"
   "include/task.hpp"
-  "include/worker_pool.hpp"
 )
 
 add_library(dispatch_queue ${_DISPATCH_QUEUE_STATIC_OR_SHARED}
