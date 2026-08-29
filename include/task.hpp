@@ -4,6 +4,7 @@
 #include <coroutine>
 #endif
 #include <exception>
+#include <type_traits>
 
 #include "detail/function_result.hpp"
 #include "detail/is_instance_of.hpp"
@@ -61,7 +62,7 @@ public:
 			task value_this = *this;
 			auto nested_future = detail::task_future<detail::function_result<F, T>>::create_pending();
 			future->then([=] {
-				value_this.get().then([=](auto t) {
+				value_this.get().then([=](const auto& t) {
 					nested_future->do_work(f, t);
 				});
 			});
@@ -197,6 +198,68 @@ public:
 		}
 		else {
 			DISPATCH_QUEUE_THROW_INVALID_OR(return false);
+		}
+	}
+
+	/**
+	 * Convert valued task to void task.
+	 */
+	operator task<void>() const {
+		switch (get_state()) {
+			case task_state::pending: {
+				auto void_future = detail::task_future<void>::create_pending();
+				then([=](const task& t) {
+					if (auto exception = t.get_exception()) {
+						void_future->set_exception(exception);
+					}
+					else {
+						void_future->set_value();
+					}
+				});
+				return to_task(void_future);
+			}
+
+			case task_state::ready:
+				return to_task(detail::task_future<void>::create_ready());
+
+			case task_state::failed:
+				return to_task(detail::task_future<void>::create_failed(get_exception()));
+
+			default:
+				return {};
+		}
+	}
+
+	/**
+	 * Convert to task of convertible type.
+	 */
+	template<typename U, typename = typename std::enable_if<std::is_convertible<T, U>::value>::type>
+	explicit operator task<U>() const {
+		switch (get_state()) {
+			case task_state::pending: {
+				auto u_future = detail::task_future<U>::create_pending();
+				then([=](const task& t) {
+					if (auto exception = t.get_exception()) {
+						u_future->set_exception(exception);
+					}
+					else {
+						U u_value = (U) t.get();
+						u_future->set_value(std::move(u_value));
+					}
+				});
+				return to_task(u_future);
+			}
+
+			case task_state::ready: {
+				U u_value = (U) get();
+				return to_task(detail::task_future<U>::create_ready(std::move(u_value)));
+			}
+
+			case task_state::failed:
+				return to_task(detail::task_future<U>::create_failed(get_exception()));
+
+			default:
+				return {};
 		}
 	}
 
