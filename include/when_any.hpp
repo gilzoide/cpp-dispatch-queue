@@ -1,12 +1,9 @@
 #pragma once
 
 #include <atomic>
-#include <iterator>
 #include <memory>
-#ifdef __cpp_lib_ranges
-#include <ranges>
-#endif
 
+#include "detail/ranges.hpp"
 #include "task.hpp"
 
 namespace dispatch_queue {
@@ -32,13 +29,12 @@ struct when_any_helper {
 
 template<typename TaskRange>
 task<void> when_any_internal(const TaskRange& tasks) {
-#ifdef __cpp_lib_ranges
-	auto is_empty = std::ranges::empty(tasks);
-#else
-	auto is_empty = std::empty(tasks);
-#endif
-	if (is_empty) {
+	auto tasks_size = detail::range_size(tasks);
+	if (tasks_size == 0) {
 		return detail::task_future<void>::create_ready();
+	}
+	else if (tasks_size == 1) {
+		return *detail::range_begin(tasks);
 	}
 
 	when_any_helper helper;
@@ -80,14 +76,18 @@ task<void> when_any(const TaskRange& tasks) {
 	 * Otherwise, it succeeds.
 	 */
 	template<typename... Tasks>
-	task<void> when_any(Tasks&&... tasks) {
-		if (sizeof...(Tasks) == 0) {
+	task<void> when_any(const Tasks&... tasks) {
+		if constexpr (sizeof...(Tasks) == 0) {
 			return detail::task_future<void>::create_ready();
 		}
-
-		detail::when_any_helper helper;
-		(tasks.then(helper), ...);
-		return helper.future;
+		else if constexpr (sizeof...(Tasks) == 1) {
+			return std::get<0>(std::forward_as_tuple(std::forward<Tasks>(tasks)...));
+		}
+		else {
+			detail::when_any_helper helper;
+			(tasks.then(helper), ...);
+			return helper.future;
+		}
 	}
 #endif // __cpp_fold_expressions
 
