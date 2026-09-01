@@ -34,31 +34,31 @@ public:
 	worker_pool& operator=(const worker_pool&) = delete;
 
 	int thread_count() const;
-	size_t size();
+	size_t size() const;
 
 	void enqueue_task(task_type type, task_function&& task, task_tag tag);
 	std::list<task_function> pop_main_loop_tasks();
 	void clear();
 	void shutdown();
 
-	void wait();
+	void wait() const;
 
 	template<class Rep, class Period>
-	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) {
+	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
 		std::unique_lock<std::mutex> lock(mutex);
 		return all_done_condition_variable.wait_for(lock, timeout_duration, wait_predicate());
 	}
 
 	template<class Clock, class Duration>
-	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) {
+	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
 		std::unique_lock<std::mutex> lock(mutex);
 		return all_done_condition_variable.wait_until(lock, timeout_time, wait_predicate());
 	}
 
 private:
-	std::mutex mutex;
+	mutable std::mutex mutex;
+	mutable std::condition_variable all_done_condition_variable;
 	std::condition_variable task_condition_variable;
-	std::condition_variable all_done_condition_variable;
 	std::vector<std::thread> worker_threads;
 	pending_task_queue& task_queue;
 	int idle_threads = 0;

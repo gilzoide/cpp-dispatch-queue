@@ -12,7 +12,7 @@ int worker_pool::thread_count() const {
 	return worker_threads.size();
 }
 
-size_t worker_pool::size() {
+size_t worker_pool::size() const {
 	std::lock_guard<std::mutex> lock(mutex);
 	return task_queue.size();
 }
@@ -61,7 +61,7 @@ void worker_pool::shutdown() {
 	is_shutting_down = false;
 }
 
-void worker_pool::wait() {
+void worker_pool::wait() const {
 	std::unique_lock<std::mutex> lock(mutex);
 	all_done_condition_variable.wait(lock, wait_predicate());
 }
