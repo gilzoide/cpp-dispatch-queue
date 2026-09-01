@@ -40,6 +40,29 @@ public:
 	}
 
 	/**
+	 * Creates a ready `task<void>`.
+	 */
+	template<typename U = T, typename = typename std::enable_if<std::is_void<U>::value>::type>
+	static task create_ready() {
+		return detail::task_future<U>::create_ready();
+	}
+
+	/**
+	 * Creates a ready `task<T>` with the passed value.
+	 */
+	template<typename U = T, typename = typename std::enable_if<!std::is_void<U>::value>::type>
+	static task create_ready(U&& value) {
+		return detail::task_future<U>::create_ready(std::move(value));
+	}
+
+	/**
+	 * Creates a failed `task<T>` with the passed exception.
+	 */
+	static task create_failed(std::exception_ptr exception) {
+		return detail::task_future<T>::create_failed(exception);
+	}
+
+	/**
 	 * Checks if the task refers to a shared state.
 	 */
 	bool valid() const {
@@ -220,10 +243,10 @@ public:
 			}
 
 			case task_state::ready:
-				return to_task(detail::task_future<void>::create_ready());
+				return task<void>::create_ready();
 
 			case task_state::failed:
-				return to_task(detail::task_future<void>::create_failed(get_exception()));
+				return task<void>::create_failed(get_exception());
 
 			default:
 				return {};
@@ -252,11 +275,11 @@ public:
 
 			case task_state::ready: {
 				U u_value = (U) get();
-				return to_task(detail::task_future<U>::create_ready(std::move(u_value)));
+				return task<U>::create_ready(std::move(u_value));
 			}
 
 			case task_state::failed:
-				return to_task(detail::task_future<U>::create_failed(get_exception()));
+				return task<U>::create_failed(get_exception());
 
 			default:
 				return {};
