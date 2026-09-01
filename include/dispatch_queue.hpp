@@ -6,9 +6,15 @@
 #include "detail/function_result.hpp"
 #include "detail/pending_task_queue.hpp"
 #include "detail/promise.hpp"
+#include "detail/ranges.hpp"
 #include "detail/worker_pool.hpp"
 #include "task_tag.hpp"
 #include "task.hpp"
+#include "when_all.hpp"
+
+#ifndef DISPATCH_QUEUE_DEFAULT_BATCH_SIZE
+	#define DISPATCH_QUEUE_DEFAULT_BATCH_SIZE 64
+#endif
 
 namespace dispatch_queue {
 
@@ -93,6 +99,44 @@ public:
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_tagged(task_tag tag, F&& f, Args&&... args) {
 		return dispatch_internal(detail::task_type::tagged, tag, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+
+	/**
+	 * Iterate from `begin` until `end` applying `f` to each element in one or more dispatched tasks.
+	 *
+	 * The range is chunked in batches of size `batch_size`, so each dispatched task is applied to at most `batch_size` elements.
+	 * The returned task finishes when all batches finish.
+	 */
+	template<typename F, typename It>
+	task<void> parallel_for(F&& f, const It& begin, const It& end, size_t batch_size = DISPATCH_QUEUE_DEFAULT_BATCH_SIZE) {
+		std::vector<task<void>> tasks;
+		detail::apply_batches([&](auto&& batch_begin, auto&& batch_end) {
+			tasks.emplace_back(dispatch([=] {
+				for (auto it = batch_begin; it != batch_end; ++it) {
+					f(*it);
+				}
+			}));
+		}, begin, end, batch_size);
+		return when_all(tasks);
+	}
+
+	/**
+	 * Iterate over `range` applying `f` to each element in one or more dispatched tasks.
+	 *
+	 * The range is chunked in batches of size `batch_size`, so each dispatched task is applied to at most `batch_size` elements.
+	 * The returned task finishes when all batches finish.
+	 */
+	template<typename F, typename R>
+	task<void> parallel_for(F&& f, R&& range, size_t batch_size = DISPATCH_QUEUE_DEFAULT_BATCH_SIZE) {
+		std::vector<task<void>> tasks;
+		detail::apply_batches([&](auto&& batch_begin, auto&& batch_end) {
+			tasks.emplace_back(dispatch([=] {
+				for (auto it = batch_begin; it != batch_end; ++it) {
+					f(*it);
+				}
+			}));
+		}, range, batch_size);
+		return when_all(tasks);
 	}
 
 	/**

@@ -24,7 +24,7 @@ namespace detail {
 
 class task_future_base {
 	auto wait_predicate() {
-		return [this]{ return state != task_state::pending; };
+		return [this] { return state != task_state::pending; };
 	}
 public:
 	task_state get_state() {
@@ -134,7 +134,7 @@ public:
 		auto continuation_future = task_future<function_result<F>>::create_pending();
 		std::unique_lock<std::mutex> lock(mutex);
 		if (state == task_state::pending) {
-			continuations.push_back([=]() {
+			continuations.push_back([=] {
 				continuation_future->do_work(f);
 			});
 		}
@@ -163,7 +163,7 @@ public:
 			set_exception(std::current_exception());
 		}
 
-		auto continuations = std::move(this->continuations);
+		auto continuations = extract_continuations();
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
@@ -192,6 +192,15 @@ private:
 		struct{} empty;
 		T value;
 	};
+
+	std::vector<std::function<void()>> extract_continuations() {
+		std::vector<std::function<void()>> result;
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			continuations.swap(result);
+		}
+		return result;
+	}
 };
 
 
@@ -259,7 +268,7 @@ public:
 			set_exception(std::current_exception());
 		}
 
-		auto continuations = std::move(this->continuations);
+		auto continuations = extract_continuations();
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
@@ -283,6 +292,15 @@ public:
 
 private:
 	std::vector<std::function<void()>> continuations;
+
+	std::vector<std::function<void()>> extract_continuations() {
+		std::vector<std::function<void()>> result;
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			continuations.swap(result);
+		}
+		return result;
+	}
 };
 
 } // end namespace detail

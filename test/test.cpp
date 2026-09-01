@@ -3,6 +3,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <dispatch_queue.hpp>
 
+using namespace std::chrono_literals;
+
 TEST_CASE("Dispatch Queue") {
 	SECTION("Synchronous") {
 		dispatch_queue::dispatch_queue q(0);
@@ -52,19 +54,6 @@ TEST_CASE("Dispatch Queue") {
 		}
 
 		q.wait();
-	}
-
-	SECTION("Dependency") {
-		dispatch_queue::dispatch_queue q(-1);
-
-		auto task = q.dispatch([=]{
-			return 42;
-		});
-		// auto dependant_task = q.dispatch(task, [task]{
-		// 	REQUIRE(task.get() == 42);
-		// });
-
-		// dependant_task.wait();
 	}
 
 	SECTION("Main loop") {
@@ -126,4 +115,23 @@ TEST_CASE("Dispatch Queue") {
 		REQUIRE(coro.get() == 3);
 	}
 #endif
+}
+
+TEST_CASE("Parallel for each") {
+	bool finished[1024] = {};
+	for (bool b : finished) {
+		REQUIRE(!b);
+	}
+
+	dispatch_queue::dispatch_queue q(-1);
+	auto task = q.parallel_for([&](auto& b) {
+		b = true;
+	}, finished).then([&](const auto& t) {
+		for (bool b : finished) {
+			REQUIRE(b);
+		}
+	});
+	if (!task.wait_for(1s)) {
+		FAIL("Task timed out!");
+	}
 }
