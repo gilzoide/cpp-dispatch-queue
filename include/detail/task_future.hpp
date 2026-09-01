@@ -38,12 +38,17 @@ public:
 	}
 
 	void set_exception(std::exception_ptr exception) {
+		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
 			state = task_state::failed;
 			this->exception = exception;
+			this->continuations.swap(continuations);
 		}
 		condition_variable.notify_all();
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
 	}
 
 	void wait() {
@@ -67,6 +72,7 @@ protected:
 	std::mutex mutex;
 	std::condition_variable condition_variable;
 	std::exception_ptr exception;
+	std::vector<std::function<void()>> continuations;
 	task_state state;
 
 	struct private_construct {};
@@ -162,11 +168,6 @@ public:
 		DISPATCH_QUEUE_CATCH(...) {
 			set_exception(std::current_exception());
 		}
-
-		auto continuations = extract_continuations();
-		for (auto&& continuation : continuations) {
-			continuation();
-		}
 	}
 
 	template<typename F>
@@ -178,12 +179,17 @@ public:
 	}
 
 	void set_value(T&& value) {
+		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
 			state = task_state::ready;
 			this->value = std::move(value);
+			this->continuations.swap(continuations);
 		}
 		condition_variable.notify_all();
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
 	}
 
 private:
@@ -192,15 +198,6 @@ private:
 		struct{} empty;
 		T value;
 	};
-
-	std::vector<std::function<void()>> extract_continuations() {
-		std::vector<std::function<void()>> result;
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			continuations.swap(result);
-		}
-		return result;
-	}
 };
 
 
@@ -267,11 +264,6 @@ public:
 		DISPATCH_QUEUE_CATCH(...) {
 			set_exception(std::current_exception());
 		}
-
-		auto continuations = extract_continuations();
-		for (auto&& continuation : continuations) {
-			continuation();
-		}
 	}
 
 	template<typename F>
@@ -283,11 +275,16 @@ public:
 	}
 
 	void set_value() {
+		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
 			state = task_state::ready;
+			this->continuations.swap(continuations);
 		}
 		condition_variable.notify_all();
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
 	}
 
 private:
