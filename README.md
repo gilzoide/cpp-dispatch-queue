@@ -18,7 +18,10 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
 - Returned `dispatch_queue::task<T>` from dispatch methods are similar to `std::shared_future`, with the following additions:
   + Use `task.get_state()` to get whether task is pending, ready or failed with exception
   + Use `task.then(f)` to add a continuation function that runs when task finishes
-  + Use `task.get_exception()` to get stored exception_ptr
+  + Use `task.get_exception()` to get stored `exception_ptr`
+- Use `dispatch_queue::when_all(tasks...)` to get a task that finishes when all the passed tasks finish
+- Use `dispatch_queue::when_any(tasks...)` to get a task that finishes when any of the passed tasks finish
+- Use `dispatch_queue::parallel_for(f, begin, end, batch_size)` or `dispatch_queue::parallel_for(f, range, batch_size)` to process ranges in parallel
 - Built-in C++20 coroutine support
   + Use `dispatch_queue::task<T>` as the return value for your coroutines
   + `co_await` other tasks to resume the coroutine as the task's continuation
