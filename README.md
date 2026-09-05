@@ -16,9 +16,12 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
   + Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
     Use this to serialize different task types without having to create separate dispatch queues.
 - Returned `dispatch_queue::task<T>` from dispatch methods are similar to `std::shared_future`, with the following additions:
-  + Use `task.get_state()` to get whether task is pending, ready or failed with exception
+  + Use `task.get_state()` to get whether task is invalid, pending, ready or failed with exception
   + Use `task.then(f)` to add a continuation function that runs when task finishes
   + Use `task.get_exception()` to get stored `exception_ptr`
+  + Use `task<T>::create_ready(T)` to create a finished task that in the ready state
+  + Use `task<T>::create_failed(e)` to create a finished task that in the failed state
+  + Use `task<T>::create_pending()` to create a pending task that can be finished using `task.set_value(T)` and `task.set_exception(e)`
 - Use `dispatch_queue::when_all(tasks...)` to get a task that finishes when all the passed tasks finish
 - Use `dispatch_queue::when_any(tasks...)` to get a task that finishes when any of the passed tasks finish
 - Use `dispatch_queue::parallel_for(f, begin, end, batch_size)` or `dispatch_queue::parallel_for(f, range, batch_size)` to process ranges in parallel
@@ -117,7 +120,41 @@ dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
 
 
 ///////////////////////////////////////////////////////////
-// 3. Built-in C++20 coroutine support
+// 3. Aggregating tasks
+///////////////////////////////////////////////////////////
+
+// `all_task` will be finished only after all passed tasks are finished
+auto all_task = dispatch_queue::when_all(
+    dispatcher.dispatch([](){ /* ... */ }),
+    dispatcher.dispatch([](){ /* ... */ }),
+    dispatcher.dispatch([](){ /* ... */ }),
+    dispatcher.dispatch([](){ /* ... */ })
+);
+all_task.wait();
+
+// `any_task` will be finished after any of the passed tasks finish
+auto any_task = dispatch_queue::when_any(
+    dispatcher.dispatch([](){ /* ... */ }),
+    dispatcher.dispatch([](){ /* ... */ }),
+    dispatcher.dispatch([](){ /* ... */ }),
+    dispatcher.dispatch([](){ /* ... */ })
+);
+any_task.wait();
+
+
+///////////////////////////////////////////////////////////
+// 4. Tasks as promise
+///////////////////////////////////////////////////////////
+
+// Tasks can be used as promises in async code even without dispatch queues
+dispatch_queue::task<void> promise = dispatch_queue::task<void>::create_pending();
+auto on_success = [=](){ promise.set_value(); };
+auto on_failure = [=](){ promise.set_exception(std::make_exception_ptr(std::runtime_error("error"))); };
+do_something_async_with_callback(on_success, on_failure);
+
+
+///////////////////////////////////////////////////////////
+// 5. Built-in C++20 coroutine support
 ///////////////////////////////////////////////////////////
 
 // Use dispatch_queue::task<T> as return value for coroutines
@@ -145,7 +182,7 @@ dispatch_queue::task<void> my_coro() {
 
 
 ///////////////////////////////////////////////////////////
-// 4. Check some stats
+// 6. Check some stats
 ///////////////////////////////////////////////////////////
 
 int dispatcher_thread_count = dispatcher.thread_count();
@@ -155,7 +192,7 @@ bool has_no_pending_tasks = dispatcher.empty();
 
 
 ///////////////////////////////////////////////////////////
-// 5. Other operations
+// 7. Other operations
 ///////////////////////////////////////////////////////////
 
 // Cancel all pending tasks.
