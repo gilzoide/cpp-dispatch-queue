@@ -28,7 +28,7 @@ namespace dispatch_queue {
  *
  * All methods are thread-safe.
  */
-template<typename T = void>
+template<typename T>
 class task {
 public:
 	using value_type = T;

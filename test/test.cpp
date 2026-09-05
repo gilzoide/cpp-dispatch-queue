@@ -120,27 +120,27 @@ TEST_CASE("Dispatch awaiters") {
 TEST_CASE("when_all") {
 	SECTION("all success") {
 		auto task = dispatch_queue::when_all(
-			dispatch_queue::task<>::create_ready(),
-			dispatch_queue::task<>::create_ready(),
-			dispatch_queue::task<>::create_ready()
+			dispatch_queue::task<void>::create_ready(),
+			dispatch_queue::task<void>::create_ready(),
+			dispatch_queue::task<void>::create_ready()
 		);
 		REQUIRE(task.get_state() == dispatch_queue::task_state::ready);
 	}
 
 	SECTION("all failed") {
 		auto task = dispatch_queue::when_all(
-			dispatch_queue::task<>::create_failed(std::make_exception_ptr(std::runtime_error(""))),
-			dispatch_queue::task<>::create_failed(std::make_exception_ptr(std::runtime_error(""))),
-			dispatch_queue::task<>::create_failed(std::make_exception_ptr(std::runtime_error("")))
+			dispatch_queue::task<void>::create_failed(std::make_exception_ptr(std::runtime_error(""))),
+			dispatch_queue::task<void>::create_failed(std::make_exception_ptr(std::runtime_error(""))),
+			dispatch_queue::task<void>::create_failed(std::make_exception_ptr(std::runtime_error("")))
 		);
 		REQUIRE(task.get_state() == dispatch_queue::task_state::failed);
 	}
 
 	SECTION("one failed") {
 		auto task = dispatch_queue::when_all(
-			dispatch_queue::task<>::create_ready(),
-			dispatch_queue::task<>::create_ready(),
-			dispatch_queue::task<>::create_failed(std::make_exception_ptr(std::runtime_error("")))
+			dispatch_queue::task<void>::create_ready(),
+			dispatch_queue::task<void>::create_ready(),
+			dispatch_queue::task<void>::create_failed(std::make_exception_ptr(std::runtime_error("")))
 		);
 		REQUIRE(task.get_state() == dispatch_queue::task_state::failed);
 	}
@@ -148,8 +148,8 @@ TEST_CASE("when_all") {
 	SECTION("one pending") {
 		auto future = dispatch_queue::detail::task_future<void>::create_pending();
 		auto task = dispatch_queue::when_all(
-			dispatch_queue::task<>::create_ready(),
-			dispatch_queue::task<>::create_ready(),
+			dispatch_queue::task<void>::create_ready(),
+			dispatch_queue::task<void>::create_ready(),
 			dispatch_queue::task(future)
 		);
 		REQUIRE(task.get_state() == dispatch_queue::task_state::pending);
