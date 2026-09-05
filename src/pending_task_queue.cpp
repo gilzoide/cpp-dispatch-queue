@@ -5,14 +5,26 @@ namespace dispatch_queue {
 namespace detail {
 
 bool pending_task_queue::empty() const {
+	for (auto&& it : tagged_tasks) {
+		if (!it.second.empty()) {
+			return false;
+		}
+	}
 	return background_tasks.empty();
 }
 
 size_t pending_task_queue::size() const {
-	return background_tasks.size();
+	size_t count = 0;
+	for (auto&& it : tagged_tasks) {
+		count += it.second.size();
+	}
+	return count + background_tasks.size();
 }
 
 void pending_task_queue::clear() {
+	for (auto&& it : tagged_tasks) {
+		it.second.clear();
+	}
 	background_tasks.clear();
 }
 
