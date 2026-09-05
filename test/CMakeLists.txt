@@ -1,3 +1,4 @@
+set(CATCH_CONFIG_THREAD_SAFE_ASSERTIONS ON)
 add_subdirectory(Catch2)
 
 include(CTest)
