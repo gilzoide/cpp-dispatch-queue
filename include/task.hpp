@@ -54,7 +54,7 @@ public:
 	 */
 	template<typename U = T, typename = typename std::enable_if<std::is_void<U>::value>::type>
 	static task create_ready() {
-		return detail::task_future<U>::create_ready();
+		return detail::task_future<T>::create_ready();
 	}
 
 	/**
@@ -62,7 +62,7 @@ public:
 	 */
 	template<typename U = T, typename = typename std::enable_if<not std::is_void<U>::value>::type>
 	static task create_ready(U&& value) {
-		return detail::task_future<U>::create_ready(std::move(value));
+		return detail::task_future<T>::create_ready(std::move(value));
 	}
 
 	/**

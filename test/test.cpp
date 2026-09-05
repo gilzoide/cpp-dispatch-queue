@@ -187,10 +187,40 @@ TEST_CASE("task as promise") {
 		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
 	}
 
+	SECTION("ready T") {
+		auto promise = dispatch_queue::task<int>::create_pending();
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::pending);
+		promise.set_value(42);
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::ready);
+		REQUIRE_THROWS(promise.set_value(42));
+		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
+	}
+
+	SECTION("create_ready") {
+		auto promise = dispatch_queue::task<void>::create_ready();
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::ready);
+		REQUIRE_THROWS(promise.set_value());
+		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
+	}
+
+	SECTION("create_ready T") {
+		auto promise = dispatch_queue::task<int>::create_ready(42);
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::ready);
+		REQUIRE_THROWS(promise.set_value(42));
+		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
+	}
+
 	SECTION("failed") {
 		auto promise = dispatch_queue::task<void>::create_pending();
 		REQUIRE(promise.get_state() == dispatch_queue::task_state::pending);
 		promise.set_exception(std::make_exception_ptr(std::runtime_error("")));
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::failed);
+		REQUIRE_THROWS(promise.set_value());
+		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
+	}
+
+	SECTION("create_failed") {
+		auto promise = dispatch_queue::task<void>::create_failed(std::make_exception_ptr(std::runtime_error("")));
 		REQUIRE(promise.get_state() == dispatch_queue::task_state::failed);
 		REQUIRE_THROWS(promise.set_value());
 		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
