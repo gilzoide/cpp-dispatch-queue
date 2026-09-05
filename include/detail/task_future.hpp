@@ -286,18 +286,6 @@ public:
 			continuation();
 		}
 	}
-
-private:
-	std::vector<std::function<void()>> continuations;
-
-	std::vector<std::function<void()>> extract_continuations() {
-		std::vector<std::function<void()>> result;
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			continuations.swap(result);
-		}
-		return result;
-	}
 };
 
 } // end namespace detail
