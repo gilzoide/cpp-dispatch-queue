@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['features_0',['Features',['../index.html#autotoc_md1',1,'']]],
-  ['for_20debugging_1',['Setting thread names for debugging',['../index.html#autotoc_md4',1,'']]]
+  ['empty_0',['empty',['../classdispatch__queue_1_1dispatch__queue.html#a5d7f307e85046bc312fae007019ace07',1,'dispatch_queue::dispatch_queue']]],
+  ['example_1',['Usage example',['../index.html#autotoc_md2',1,'']]]
 ];

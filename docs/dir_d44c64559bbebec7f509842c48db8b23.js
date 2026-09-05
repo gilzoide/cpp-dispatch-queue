@@ -1,11 +1,10 @@
 var dir_d44c64559bbebec7f509842c48db8b23 =
 [
-    [ "dispatch_queue.hpp", "dispatch__queue_8hpp_source.html", null ],
-    [ "function_result.hpp", "function__result_8hpp_source.html", null ],
-    [ "is_instance_of.hpp", "is__instance__of_8hpp_source.html", null ],
-    [ "pending_task_queue.hpp", "pending__task__queue_8hpp_source.html", null ],
-    [ "promise.hpp", "promise_8hpp_source.html", null ],
-    [ "task.hpp", "task_8hpp_source.html", null ],
-    [ "task_future.hpp", "task__future_8hpp_source.html", null ],
-    [ "worker_pool.hpp", "worker__pool_8hpp_source.html", null ]
+    [ "dispatch_queue.hpp", "dispatch__queue_8hpp.html", "dispatch__queue_8hpp" ],
+    [ "task.hpp", "task_8hpp.html", "task_8hpp" ],
+    [ "task_error.hpp", "task__error_8hpp.html", "task__error_8hpp" ],
+    [ "task_state.hpp", "task__state_8hpp.html", "task__state_8hpp" ],
+    [ "task_tag.hpp", "task__tag_8hpp.html", "task__tag_8hpp" ],
+    [ "when_all.hpp", "when__all_8hpp.html", "when__all_8hpp" ],
+    [ "when_any.hpp", "when__any_8hpp.html", "when__any_8hpp" ]
 ];

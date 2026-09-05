@@ -123,17 +123,28 @@ Features</h1>
 <li>Useful for synchronizing state calculated in background tasks with the application's main loop</li>
 </ul>
 </li>
-<li>Returned <code><a class="el" href="classdispatch__queue_1_1task.html">dispatch_queue::task</a>&lt;T&gt;</code> from dispatch methods are similar to <code>std::shared_future</code>, with the following additions:<ul>
-<li>Use <code>task.get_state()</code> to get whether task is pending, ready or failed with exception</li>
-<li>Use <code>task.then(f)</code> to add a continuation function that runs when task finishes</li>
-<li>Use <code>task.get_exception()</code> to get stored exception_ptr</li>
+<li>Use <code>dispatch_queue.dispatch_tagged(tag, f, args...)</code> to dispatch tagged tasks<ul>
+<li>Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time. Use this to serialize different task types without having to create separate dispatch queues.</li>
 </ul>
 </li>
+<li>Returned <code><a class="el" href="classdispatch__queue_1_1task.html">dispatch_queue::task</a>&lt;T&gt;</code> from dispatch methods are similar to <code>std::shared_future</code>, with the following additions:<ul>
+<li>Use <code>task.get_state()</code> to get whether task is invalid, pending, ready or failed with exception</li>
+<li>Use <code>task.then(f)</code> to add a continuation function that runs when task finishes</li>
+<li>Use <code>task.get_exception()</code> to get stored <code>exception_ptr</code></li>
+<li>Use <code>task&lt;T&gt;::create_ready(T)</code> to create a finished task that in the ready state</li>
+<li>Use <code>task&lt;T&gt;::create_failed(e)</code> to create a finished task that in the failed state</li>
+<li>Use <code>task&lt;T&gt;::create_pending()</code> to create a pending task that can be finished using <code>task.set_value(T)</code> and <code>task.set_exception(e)</code></li>
+</ul>
+</li>
+<li>Use <code>dispatch_queue::when_all(tasks...)</code> to get a task that finishes when all the passed tasks finish</li>
+<li>Use <code>dispatch_queue::when_any(tasks...)</code> to get a task that finishes when any of the passed tasks finish</li>
+<li>Use <code>dispatch_queue::parallel_for(f, begin, end, batch_size)</code> or <code>dispatch_queue::parallel_for(f, range, batch_size)</code> to process ranges in parallel</li>
 <li>Built-in C++20 coroutine support<ul>
 <li>Use <code><a class="el" href="classdispatch__queue_1_1task.html">dispatch_queue::task</a>&lt;T&gt;</code> as the return value for your coroutines</li>
 <li><code>co_await</code> other tasks to resume the coroutine as the task's continuation</li>
 <li>Use <code>co_await dispatch_queue.dispatch()</code> to continue coroutine in a dispatch queue's background loop</li>
 <li>Use <code>co_await dispatch_queue.dispatch_main()</code> to continue coroutine in a dispatch queue's main loop</li>
+<li>Use <code>co_await dispatch_queue.dispatch_tagged()</code> to continue coroutine in a dispatch queue's background loop using the provided tag</li>
 </ul>
 </li>
 <li>Supports compiling with <code>-fno-exceptions</code> and <code>-fno-rtti</code></li>
@@ -141,7 +152,7 @@ Features</h1>
 </ul>
 <h1><a class="anchor" id="autotoc_md2"></a>
 Usage example</h1>
-<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;dispatch_queue.hpp&gt;</span></div>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;<a class="code" href="dispatch__queue_8hpp.html">dispatch_queue.hpp</a>&gt;</span></div>
 <div class="line"></div>
 <div class="line"><span class="comment">// 1. Create a dispatch queue</span></div>
 <div class="line"> </div>
@@ -208,8 +219,48 @@ Usage example</h1>
 <div class="line">    dispatcher.main_loop();</div>
 <div class="line">}</div>
 <div class="line"> </div>
+<div class="line"><span class="comment">// Queue tagged tasks</span></div>
+<div class="line"><span class="comment">// Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.</span></div>
+<div class="line"><span class="keyword">enum</span> TaskTags {</div>
+<div class="line">    SAVE_FILE_IO,</div>
+<div class="line">};</div>
+<div class="line"><span class="comment">// The three following tasks will run one at a time, even if dispatch queue has more idle threads</span></div>
+<div class="line">dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ <span class="comment">/* ... */</span> });</div>
+<div class="line">dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ <span class="comment">/* ... */</span> });</div>
+<div class="line">dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ <span class="comment">/* ... */</span> });</div>
+<div class="line"> </div>
 <div class="line"></div>
-<div class="line"><span class="comment">// 3. Built-in C++20 coroutine support</span></div>
+<div class="line"><span class="comment">// 3. Aggregating tasks</span></div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// `all_task` will be finished only after all passed tasks are finished</span></div>
+<div class="line"><span class="keyword">auto</span> all_task = <a class="code hl_function" href="namespacedispatch__queue.html#abd40f184dc6cbafe775882b703f1fdaf">dispatch_queue::when_all</a>(</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> }),</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> }),</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> }),</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> })</div>
+<div class="line">);</div>
+<div class="line">all_task.wait();</div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// `any_task` will be finished after any of the passed tasks finish</span></div>
+<div class="line"><span class="keyword">auto</span> any_task = <a class="code hl_function" href="namespacedispatch__queue.html#a958c93996dabd7e2feff18c07eecda44">dispatch_queue::when_any</a>(</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> }),</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> }),</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> }),</div>
+<div class="line">    dispatcher.dispatch([](){ <span class="comment">/* ... */</span> })</div>
+<div class="line">);</div>
+<div class="line">any_task.wait();</div>
+<div class="line"> </div>
+<div class="line"></div>
+<div class="line"><span class="comment">// 4. Tasks as promise</span></div>
+<div class="line"> </div>
+<div class="line"><span class="comment">// Tasks can be used as promises in async code even without dispatch queues</span></div>
+<div class="line"><a class="code hl_class" href="classdispatch__queue_1_1task.html">dispatch_queue::task&lt;void&gt;</a> promise = <a class="code hl_function" href="classdispatch__queue_1_1task.html#a4b6d95804b23f7c3c676ecb82e7abdb9">dispatch_queue::task&lt;void&gt;::create_pending</a>();</div>
+<div class="line"><span class="keyword">auto</span> on_success = [=](){ promise.<a class="code hl_function" href="classdispatch__queue_1_1task.html#a0de2414c1a824333536bad32fa908ed5">set_value</a>(); };</div>
+<div class="line"><span class="keyword">auto</span> on_failure = [=](){ promise.<a class="code hl_function" href="classdispatch__queue_1_1task.html#a71640fdca49ac8dcdbe870101217b0ef">set_exception</a>(std::make_exception_ptr(std::runtime_error(<span class="stringliteral">&quot;error&quot;</span>))); };</div>
+<div class="line">do_something_async_with_callback(on_success, on_failure);</div>
+<div class="line"> </div>
+<div class="line"></div>
+<div class="line"><span class="comment">// 5. Built-in C++20 coroutine support</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Use dispatch_queue::task&lt;T&gt; as return value for coroutines</span></div>
 <div class="line"><a class="code hl_class" href="classdispatch__queue_1_1task.html">dispatch_queue::task&lt;void&gt;</a> my_coro() {</div>
@@ -227,10 +278,15 @@ Usage example</h1>
 <div class="line">    <span class="comment">// coroutine continues within dispatch queue&#39;s main loop</span></div>
 <div class="line">    <span class="keyword">co_await</span> dispatcher.dispatch_main();</div>
 <div class="line">    do_something_in_main_loop();</div>
+<div class="line"> </div>
+<div class="line">    <span class="comment">// co_await .dispatch_tagged(tag)</span></div>
+<div class="line">    <span class="comment">// coroutine continues within dispatch queue using the provided tag</span></div>
+<div class="line">    <span class="keyword">co_await</span> dispatcher.dispatch_tagged(SAVE_FILE_IO);</div>
+<div class="line">    do_something_in_main_loop();</div>
 <div class="line">}</div>
 <div class="line"> </div>
 <div class="line"></div>
-<div class="line"><span class="comment">// 4. Check some stats</span></div>
+<div class="line"><span class="comment">// 6. Check some stats</span></div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">int</span> dispatcher_thread_count = dispatcher.thread_count();</div>
 <div class="line"><span class="keywordtype">bool</span> dispatcher_is_threaded = dispatcher.is_threaded();</div>
@@ -238,7 +294,7 @@ Usage example</h1>
 <div class="line"><span class="keywordtype">bool</span> has_no_pending_tasks = dispatcher.empty();</div>
 <div class="line"> </div>
 <div class="line"></div>
-<div class="line"><span class="comment">// 5. Other operations</span></div>
+<div class="line"><span class="comment">// 7. Other operations</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Cancel all pending tasks.</span></div>
 <div class="line"><span class="comment">// Tasks already executing will still run to completion.</span></div>
@@ -249,15 +305,21 @@ Usage example</h1>
 <div class="line"><span class="comment">// Wait until pending tasks are completed, with timeout</span></div>
 <div class="line">dispatcher.wait_for(std::chrono::seconds(5));</div>
 <div class="line">dispatcher.wait_until(std::chrono::system_clock::now() + std::chrono::seconds(5));</div>
-<div class="ttc" id="aclassdispatch__queue_1_1dispatch__queue_html"><div class="ttname"><a href="classdispatch__queue_1_1dispatch__queue.html">dispatch_queue::dispatch_queue</a></div><div class="ttdef"><b>Definition</b> dispatch_queue.hpp:13</div></div>
-<div class="ttc" id="aclassdispatch__queue_1_1task_html"><div class="ttname"><a href="classdispatch__queue_1_1task.html">dispatch_queue::task</a></div><div class="ttdef"><b>Definition</b> task.hpp:22</div></div>
-<div class="ttc" id="aclassdispatch__queue_1_1task_html_a09396d2c48a28899f48b065c17a57cac"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a09396d2c48a28899f48b065c17a57cac">dispatch_queue::task::get</a></div><div class="ttdeci">T get() const</div><div class="ttdef"><b>Definition</b> task.hpp:71</div></div>
-<div class="ttc" id="aclassdispatch__queue_1_1task_html_a60a9c2128571341f20f5f84da4c22c17"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a60a9c2128571341f20f5f84da4c22c17">dispatch_queue::task::wait</a></div><div class="ttdeci">void wait() const</div><div class="ttdef"><b>Definition</b> task.hpp:95</div></div>
-<div class="ttc" id="aclassdispatch__queue_1_1task_html_a67a2197b1454bed0c9f7fa6f5b2a23f6"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a67a2197b1454bed0c9f7fa6f5b2a23f6">dispatch_queue::task::get_exception</a></div><div class="ttdeci">std::exception_ptr get_exception() const</div><div class="ttdef"><b>Definition</b> task.hpp:85</div></div>
-<div class="ttc" id="aclassdispatch__queue_1_1task_html_a8f34cb60454b43284dd39006cc51b573"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a8f34cb60454b43284dd39006cc51b573">dispatch_queue::task::then</a></div><div class="ttdeci">auto then(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> task.hpp:59</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1dispatch__queue_html"><div class="ttname"><a href="classdispatch__queue_1_1dispatch__queue.html">dispatch_queue::dispatch_queue</a></div><div class="ttdef"><b>Definition</b> dispatch_queue.hpp:21</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html"><div class="ttname"><a href="classdispatch__queue_1_1task.html">dispatch_queue::task</a></div><div class="ttdef"><b>Definition</b> task.hpp:32</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a09396d2c48a28899f48b065c17a57cac"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a09396d2c48a28899f48b065c17a57cac">dispatch_queue::task::get</a></div><div class="ttdeci">T get() const</div><div class="ttdef"><b>Definition</b> task.hpp:147</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a0de2414c1a824333536bad32fa908ed5"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a0de2414c1a824333536bad32fa908ed5">dispatch_queue::task::set_value</a></div><div class="ttdeci">void set_value()</div><div class="ttdef"><b>Definition</b> task.hpp:162</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a4b6d95804b23f7c3c676ecb82e7abdb9"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a4b6d95804b23f7c3c676ecb82e7abdb9">dispatch_queue::task::create_pending</a></div><div class="ttdeci">static task create_pending()</div><div class="ttdef"><b>Definition</b> task.hpp:48</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a60a9c2128571341f20f5f84da4c22c17"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a60a9c2128571341f20f5f84da4c22c17">dispatch_queue::task::wait</a></div><div class="ttdeci">void wait() const</div><div class="ttdef"><b>Definition</b> task.hpp:238</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a67a2197b1454bed0c9f7fa6f5b2a23f6"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a67a2197b1454bed0c9f7fa6f5b2a23f6">dispatch_queue::task::get_exception</a></div><div class="ttdeci">std::exception_ptr get_exception() const</div><div class="ttdef"><b>Definition</b> task.hpp:205</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a71640fdca49ac8dcdbe870101217b0ef"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a71640fdca49ac8dcdbe870101217b0ef">dispatch_queue::task::set_exception</a></div><div class="ttdeci">void set_exception(std::exception_ptr exception)</div><div class="ttdef"><b>Definition</b> task.hpp:219</div></div>
+<div class="ttc" id="aclassdispatch__queue_1_1task_html_a8f34cb60454b43284dd39006cc51b573"><div class="ttname"><a href="classdispatch__queue_1_1task.html#a8f34cb60454b43284dd39006cc51b573">dispatch_queue::task::then</a></div><div class="ttdeci">auto then(F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> task.hpp:124</div></div>
+<div class="ttc" id="adispatch__queue_8hpp_html"><div class="ttname"><a href="dispatch__queue_8hpp.html">dispatch_queue.hpp</a></div></div>
+<div class="ttc" id="anamespacedispatch__queue_html_a958c93996dabd7e2feff18c07eecda44"><div class="ttname"><a href="namespacedispatch__queue.html#a958c93996dabd7e2feff18c07eecda44">dispatch_queue::when_any</a></div><div class="ttdeci">task&lt; void &gt; when_any(std::initializer_list&lt; task&lt; T &gt; &gt; tasks)</div><div class="ttdef"><b>Definition</b> when_any.hpp:56</div></div>
+<div class="ttc" id="anamespacedispatch__queue_html_abd40f184dc6cbafe775882b703f1fdaf"><div class="ttname"><a href="namespacedispatch__queue.html#abd40f184dc6cbafe775882b703f1fdaf">dispatch_queue::when_all</a></div><div class="ttdeci">task&lt; void &gt; when_all(std::initializer_list&lt; task&lt; T &gt; &gt; tasks)</div><div class="ttdef"><b>Definition</b> when_all.hpp:66</div></div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md3"></a>
 Using in CMake projects</h1>
-<p>Add this project using <code>add_subdirectory</code> and link your target to <code>dispatch_queue</code>: </p><div class="fragment"><div class="line">add_subdirectory(&quot;path/to/dispatch_queue&quot;)</div>
+<p>Add this project using <code>add_subdirectory</code> and link your target to <code><a class="el" href="namespacedispatch__queue.html">dispatch_queue</a></code>: </p><div class="fragment"><div class="line">add_subdirectory(&quot;path/to/dispatch_queue&quot;)</div>
 <div class="line">target_link_libraries(my_target dispatch_queue)</div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md4"></a>
 Setting thread names for debugging</h1>

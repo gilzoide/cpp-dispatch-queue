@@ -106,9 +106,9 @@ $(function(){initNavTree('dispatch__queue_8cpp_source.html',''); initResizable(t
   <div class="headertitle"><div class="title">dispatch_queue.cpp</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#include &quot;../include/dispatch_queue.hpp&quot;</span></div>
+<a href="dispatch__queue_8cpp.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#include &quot;<a class="code" href="dispatch__queue_8hpp.html">../include/dispatch_queue.hpp</a>&quot;</span></div>
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span> </div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="keyword">namespace </span>dispatch_queue {</div>
+<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespacedispatch__queue.html">dispatch_queue</a> {</div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span> </div>
 <div class="foldopen" id="foldopen00005" data-start="{" data-end="}">
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno"><a class="line" href="classdispatch__queue_1_1dispatch__queue.html#afac606124b398cf1544068fb7682866c">    5</a></span><a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#afac606124b398cf1544068fb7682866c">dispatch_queue::dispatch_queue</a>()</div>
@@ -118,7 +118,7 @@ $(function(){initNavTree('dispatch__queue_8cpp_source.html',''); initResizable(t
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span> </div>
 <div class="foldopen" id="foldopen00009" data-start="{" data-end="}">
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno"><a class="line" href="classdispatch__queue_1_1dispatch__queue.html#a87ae7d33e682a65234fb202f0539ed22">    9</a></span><a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#afac606124b398cf1544068fb7682866c">dispatch_queue::dispatch_queue</a>(<span class="keywordtype">int</span> <a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#a705db5b8e8d392ec57e969cd5ef7b912">thread_count</a>)</div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span>    : <a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#afac606124b398cf1544068fb7682866c">dispatch_queue</a>(<a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#a705db5b8e8d392ec57e969cd5ef7b912">thread_count</a>, [](int){})</div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span>    : <a class="code hl_namespace" href="namespacedispatch__queue.html">dispatch_queue</a>(<a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#a705db5b8e8d392ec57e969cd5ef7b912">thread_count</a>, [](int){})</div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span>{</div>
 <div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>}</div>
 </div>
@@ -173,7 +173,7 @@ $(function(){initNavTree('dispatch__queue_8cpp_source.html',''); initResizable(t
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span> </div>
 <div class="foldopen" id="foldopen00050" data-start="{" data-end="}">
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno"><a class="line" href="classdispatch__queue_1_1dispatch__queue.html#ad0285e5bb75e1261aade0976322af80c">   50</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="classdispatch__queue_1_1dispatch__queue.html#ad0285e5bb75e1261aade0976322af80c">dispatch_queue::main_loop</a>() {</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>    std::deque&lt;detail::pending_task&gt; main_loop_tasks = worker_pool</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>    <span class="keyword">auto</span> main_loop_tasks = worker_pool</div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>        ? worker_pool-&gt;pop_main_loop_tasks()</div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>        : task_queue.pop_main_loop_tasks();</div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>    <span class="keywordflow">for</span> (<span class="keyword">auto</span>&amp;&amp; it : main_loop_tasks) {</div>
@@ -208,12 +208,14 @@ $(function(){initNavTree('dispatch__queue_8cpp_source.html',''); initResizable(t
 <div class="ttc" id="aclassdispatch__queue_1_1dispatch__queue_html_ad0285e5bb75e1261aade0976322af80c"><div class="ttname"><a href="classdispatch__queue_1_1dispatch__queue.html#ad0285e5bb75e1261aade0976322af80c">dispatch_queue::dispatch_queue::main_loop</a></div><div class="ttdeci">void main_loop()</div><div class="ttdef"><b>Definition</b> dispatch_queue.cpp:50</div></div>
 <div class="ttc" id="aclassdispatch__queue_1_1dispatch__queue_html_ae1685c44a46639b759a1509faf87805f"><div class="ttname"><a href="classdispatch__queue_1_1dispatch__queue.html#ae1685c44a46639b759a1509faf87805f">dispatch_queue::dispatch_queue::size</a></div><div class="ttdeci">size_t size() const</div><div class="ttdef"><b>Definition</b> dispatch_queue.cpp:31</div></div>
 <div class="ttc" id="aclassdispatch__queue_1_1dispatch__queue_html_afac606124b398cf1544068fb7682866c"><div class="ttname"><a href="classdispatch__queue_1_1dispatch__queue.html#afac606124b398cf1544068fb7682866c">dispatch_queue::dispatch_queue::dispatch_queue</a></div><div class="ttdeci">dispatch_queue()</div><div class="ttdef"><b>Definition</b> dispatch_queue.cpp:5</div></div>
+<div class="ttc" id="adispatch__queue_8hpp_html"><div class="ttname"><a href="dispatch__queue_8hpp.html">dispatch_queue.hpp</a></div></div>
+<div class="ttc" id="anamespacedispatch__queue_html"><div class="ttname"><a href="namespacedispatch__queue.html">dispatch_queue</a></div><div class="ttdef"><b>Definition</b> dispatch_queue.hpp:19</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><b>dispatch_queue.cpp</b></li>
+    <li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><a class="el" href="dispatch__queue_8cpp.html">dispatch_queue.cpp</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.13.2 </li>
   </ul>
 </div>
