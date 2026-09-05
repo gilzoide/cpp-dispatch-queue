@@ -37,10 +37,13 @@ public:
 		return exception;
 	}
 
-	void set_exception(std::exception_ptr exception) {
+	bool set_exception(std::exception_ptr exception) {
 		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
+			if (state != task_state::pending) {
+				return false;
+			}
 			state = task_state::failed;
 			this->exception = exception;
 			this->continuations.swap(continuations);
@@ -49,6 +52,7 @@ public:
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
+		return true;
 	}
 
 	void wait() {
@@ -178,10 +182,13 @@ public:
 		};
 	}
 
-	void set_value(T&& value) {
+	bool set_value(T&& value) {
 		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
+			if (state != task_state::pending) {
+				return false;
+			}
 			state = task_state::ready;
 			this->value = std::move(value);
 			this->continuations.swap(continuations);
@@ -190,6 +197,7 @@ public:
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
+		return true;
 	}
 
 private:
@@ -274,10 +282,13 @@ public:
 		};
 	}
 
-	void set_value() {
+	bool set_value() {
 		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
+			if (state != task_state::pending) {
+				return false;
+			}
 			state = task_state::ready;
 			this->continuations.swap(continuations);
 		}
@@ -285,6 +296,7 @@ public:
 		for (auto&& continuation : continuations) {
 			continuation();
 		}
+		return true;
 	}
 };
 

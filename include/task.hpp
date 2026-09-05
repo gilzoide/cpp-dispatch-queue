@@ -15,9 +15,9 @@
 namespace dispatch_queue {
 
 #ifdef __cpp_exceptions
-	#define DISPATCH_QUEUE_THROW_INVALID_OR(body) throw task_error("task is invalid")
+	#define DISPATCH_QUEUE_THROW_OR(err_msg, body) throw task_error(err_msg)
 #else
-	#define DISPATCH_QUEUE_THROW_INVALID_OR(body) body
+	#define DISPATCH_QUEUE_THROW_OR(err_msg, body) body
 #endif
 
 /**
@@ -33,10 +33,20 @@ class task {
 public:
 	using value_type = T;
 
+	/**
+	 * Default-constructed tasks are invalid and don't hold any shared state.
+	 */
 	task() = default;
 	task(std::shared_ptr<detail::task_future<T>> future)
 		: future(future)
 	{
+	}
+
+	/**
+	 * Creates a pending task.
+	 */
+	static task create_pending() {
+		return detail::task_future<T>::create_pending();
 	}
 
 	/**
@@ -50,7 +60,7 @@ public:
 	/**
 	 * Creates a ready `task<T>` with the passed value.
 	 */
-	template<typename U = T, typename = typename std::enable_if<!std::is_void<U>::value>::type>
+	template<typename U = T, typename = typename std::enable_if<not std::is_void<U>::value>::type>
 	static task create_ready(U&& value) {
 		return detail::task_future<U>::create_ready(std::move(value));
 	}
@@ -93,7 +103,7 @@ public:
 		}
 		else {
 			using future_t = detail::task_future<detail::function_result<F, T>>;
-			DISPATCH_QUEUE_THROW_INVALID_OR({
+			DISPATCH_QUEUE_THROW_OR("task is invalid", {
 				auto work = std::bind(f, T{});
 				auto future = future_t::create(std::move(work));
 				return to_task(future);
@@ -120,7 +130,7 @@ public:
 		}
 		else {
 			using future_t = detail::task_future<detail::function_result<F, task>>;
-			DISPATCH_QUEUE_THROW_INVALID_OR({
+			DISPATCH_QUEUE_THROW_OR("task is invalid", {
 				auto work = std::bind(f, *this);
 				auto future = future_t::create(std::move(work));
 				return to_task(future);
@@ -132,14 +142,48 @@ public:
 	 * Waits until the task's value is ready (by calling `wait`), then returns the stored value.
 	 *
 	 * @throw ...  If the task failed with an exception, rethrows the exception instead.
-	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`)
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`).
 	 */
 	T get() const {
 		if (future) {
 			return future->get();
 		}
 		else {
-			DISPATCH_QUEUE_THROW_INVALID_OR(return T{});
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return T{});
+		}
+	}
+
+	/**
+	 * Mark a pending task as ready.
+	 *
+	 * @throw task_error  Thrown if task is not pending.
+	 */
+	template<typename U = T, typename = typename std::enable_if<std::is_void<U>::value>::type>
+	void set_value() {
+		if (future) {
+			if (!future->set_value()) {
+				DISPATCH_QUEUE_THROW_OR("task is not pending", return);
+			}
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
+		}
+	}
+
+	/**
+	 * Mark a pending task as ready with the specified value.
+	 *
+	 * @throw task_error  Thrown if task is not pending.
+	 */
+	template<typename U = T, typename = typename std::enable_if<not std::is_void<U>::value>::type>
+	void set_value(U&& value) {
+		if (future) {
+			if (!future->set_value(std::move(value))) {
+				DISPATCH_QUEUE_THROW_OR("task is not pending", return);
+			}
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
 		}
 	}
 
@@ -168,6 +212,22 @@ public:
 	}
 
 	/**
+	 * Mark a pending task as failed with the specified exception.
+	 *
+	 * @throw task_error  Thrown if task is not pending.
+	 */
+	void set_exception(std::exception_ptr exception) {
+		if (future) {
+			if (!future->set_exception(exception)) {
+				DISPATCH_QUEUE_THROW_OR("task is not pending", return);
+			}
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
+		}
+	}
+
+	/**
 	 * Waits until the task is either ready or failed with an exception.
 	 *
 	 * If the task is pending (`get_state() == task_state::pending`), blocks indefinitely until task finishes.
@@ -180,7 +240,7 @@ public:
 			future->wait();
 		}
 		else {
-			DISPATCH_QUEUE_THROW_INVALID_OR({});
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
 		}
 	}
 
@@ -200,7 +260,7 @@ public:
 			return future->wait_for(timeout_duration);
 		}
 		else {
-			DISPATCH_QUEUE_THROW_INVALID_OR(return false);
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return false);
 		}
 	}
 
@@ -220,7 +280,7 @@ public:
 			return future->wait_until(timeout_time);
 		}
 		else {
-			DISPATCH_QUEUE_THROW_INVALID_OR(return false);
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return false);
 		}
 	}
 

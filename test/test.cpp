@@ -176,3 +176,23 @@ TEST_CASE("parallel_for") {
 		FAIL("Task timed out!");
 	}
 }
+
+TEST_CASE("task as promise") {
+	SECTION("ready") {
+		auto promise = dispatch_queue::task<void>::create_pending();
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::pending);
+		promise.set_value();
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::ready);
+		REQUIRE_THROWS(promise.set_value());
+		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
+	}
+
+	SECTION("failed") {
+		auto promise = dispatch_queue::task<void>::create_pending();
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::pending);
+		promise.set_exception(std::make_exception_ptr(std::runtime_error("")));
+		REQUIRE(promise.get_state() == dispatch_queue::task_state::failed);
+		REQUIRE_THROWS(promise.set_value());
+		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
+	}
+}
