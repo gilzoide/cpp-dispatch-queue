@@ -27,6 +27,7 @@ set(_DISPATCH_QUEUE_HEADERS
   "include/detail/is_instance_of.hpp"
   "include/detail/pending_task_queue.hpp"
   "include/detail/promise.hpp"
+  "include/detail/ranges.hpp"
   "include/detail/task_future.hpp"
   "include/detail/worker_pool.hpp"
   "include/dispatch_queue.hpp"
@@ -34,6 +35,8 @@ set(_DISPATCH_QUEUE_HEADERS
   "include/task_state.hpp"
   "include/task_tag.hpp"
   "include/task.hpp"
+  "include/when_all.hpp"
+  "include/when_any.hpp"
 )
 
 add_library(dispatch_queue ${_DISPATCH_QUEUE_STATIC_OR_SHARED}
