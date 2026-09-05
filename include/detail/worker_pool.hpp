@@ -13,16 +13,17 @@ namespace detail {
 
 class worker_pool {
 	auto wait_predicate() const {
-		return [this]{ return is_shutting_down || task_queue.empty(); };
+		return [this]{ return is_shutting_down || (task_queue.empty() && idle_threads == worker_thread_count); };
 	}
 public:
 	template<typename Fn>
 	worker_pool(pending_task_queue& task_queue, int thread_count, Fn&& worker_init)
 		: task_queue(task_queue)
+		, worker_thread_count(thread_count)
 	{
 		worker_threads.reserve(thread_count);
 		for (int i = 0; i < thread_count; i++) {
-			worker_threads.emplace_back([&, this, i]() {
+			worker_threads.emplace_back([this, i, worker_init]() {
 				worker_init(i);
 				run_task_loop();
 			});
@@ -61,8 +62,9 @@ private:
 	std::condition_variable task_condition_variable;
 	std::vector<std::thread> worker_threads;
 	pending_task_queue& task_queue;
+	int worker_thread_count;
 	int idle_threads = 0;
-	bool is_shutting_down;
+	bool is_shutting_down = false;
 
 	void run_task_loop();
 };

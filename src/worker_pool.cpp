@@ -1,5 +1,7 @@
 #include "../include/detail/worker_pool.hpp"
 
+#include <cassert>
+
 namespace dispatch_queue {
 
 namespace detail {
@@ -9,7 +11,7 @@ worker_pool::~worker_pool() {
 }
 
 int worker_pool::thread_count() const {
-	return worker_threads.size();
+	return worker_thread_count;
 }
 
 size_t worker_pool::size() const {
@@ -74,8 +76,13 @@ void worker_pool::run_task_loop() {
 			std::unique_lock<std::mutex> lock(mutex);
 			if (!task_queue.try_pop(task)) {
 				++idle_threads;
+				assert(idle_threads <= worker_thread_count);
+				if (idle_threads == worker_thread_count) {
+					all_done_condition_variable.notify_all();
+				}
 				task_condition_variable.wait(lock, [this, &task]{ return is_shutting_down || task_queue.try_pop(task); });
 				--idle_threads;
+				assert(idle_threads >= 0);
 			}
 			if (is_shutting_down) {
 				return;
@@ -84,16 +91,6 @@ void worker_pool::run_task_loop() {
 
 		// 2. Do some work
 		task();
-
-		// 3. If all is done, notify waiters
-		bool all_done;
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			all_done = task_queue.empty();
-		}
-		if (all_done) {
-			all_done_condition_variable.notify_all();
-		}
 	}
 }
 

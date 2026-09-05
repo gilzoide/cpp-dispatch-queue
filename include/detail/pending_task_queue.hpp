@@ -38,7 +38,7 @@ public:
 	std::list<task_function> pop_main_loop_tasks();
 
 private:
-	std::unordered_map<int, std::list<pending_task>> tagged_tasks;
+	std::unordered_map<task_tag, std::list<pending_task>> tagged_tasks;
 	std::list<pending_task> background_tasks;
 	std::list<task_function> main_loop_tasks;
 };
