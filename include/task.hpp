@@ -3,12 +3,22 @@
 #ifdef __cpp_lib_coroutine
 #include <coroutine>
 #endif
+#include <exception>
+#include <type_traits>
 
-#include "function_result.hpp"
-#include "is_instance_of.hpp"
-#include "task_future.hpp"
+#include "detail/function_result.hpp"
+#include "detail/is_instance_of.hpp"
+#include "detail/task_future.hpp"
+#include "task_error.hpp"
+#include "task_state.hpp"
 
 namespace dispatch_queue {
+
+#ifdef __cpp_exceptions
+	#define DISPATCH_QUEUE_THROW_OR(err_msg, body) throw task_error(err_msg)
+#else
+	#define DISPATCH_QUEUE_THROW_OR(err_msg, body) body
+#endif
 
 /**
  * This template class represents asynchronous tasks that run in dispatch queues.
@@ -23,9 +33,50 @@ class task {
 public:
 	using value_type = T;
 
+	/**
+	 * Default-constructed tasks are invalid and don't hold any shared state.
+	 */
+	task() = default;
 	task(std::shared_ptr<detail::task_future<T>> future)
 		: future(future)
 	{
+	}
+
+	/**
+	 * Creates a pending task.
+	 */
+	static task create_pending() {
+		return detail::task_future<T>::create_pending();
+	}
+
+	/**
+	 * Creates a ready `task<void>`.
+	 */
+	template<typename U = T, typename = typename std::enable_if<std::is_void<U>::value>::type>
+	static task create_ready() {
+		return detail::task_future<T>::create_ready();
+	}
+
+	/**
+	 * Creates a ready `task<T>` with the passed value.
+	 */
+	template<typename U = T, typename = typename std::enable_if<not std::is_void<U>::value>::type>
+	static task create_ready(U&& value) {
+		return detail::task_future<T>::create_ready(std::move(value));
+	}
+
+	/**
+	 * Creates a failed `task<T>` with the passed exception.
+	 */
+	static task create_failed(std::exception_ptr exception) {
+		return detail::task_future<T>::create_failed(exception);
+	}
+
+	/**
+	 * Checks if the task refers to a shared state.
+	 */
+	bool valid() const {
+		return (bool)future;
 	}
 
 #ifdef __cpp_concepts
@@ -34,18 +85,30 @@ public:
 	 *
 	 * If the task is not finished yet, `f` will run right after the task finishes in the same thread where the task ran.
 	 * Otherwise, `f` will run immediately in the calling thread.
+	 *
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`)
 	 */
 	template<typename F>
 	requires (detail::is_instance_of<T, task>::value)
 	auto then(F&& f) const {
-		auto nested_future = detail::task_future<detail::function_result<F, T>>::create_pending();
-		task value_this = *this;
-		future->then([=]() {
-			value_this.get().then([=](auto t) {
-				nested_future->do_work(f, t);
+		if (future) {
+			task value_this = *this;
+			auto nested_future = detail::task_future<detail::function_result<F, T>>::create_pending();
+			future->then([=] {
+				value_this.get().then([=](const auto& t) {
+					nested_future->do_work(f, t);
+				});
 			});
-		});
-		return to_task(nested_future);
+			return to_task(nested_future);
+		}
+		else {
+			using future_t = detail::task_future<detail::function_result<F, T>>;
+			DISPATCH_QUEUE_THROW_OR("task is invalid", {
+				auto work = std::bind(f, T{});
+				auto future = future_t::create(std::move(work));
+				return to_task(future);
+			});
+		}
 	}
 #endif
 
@@ -54,36 +117,114 @@ public:
 	 *
 	 * If the task is not finished yet, `f` will run right after the task finishes in the same thread where the task ran.
 	 * Otherwise, `f` will run immediately in the calling thread.
+	 *
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`)
 	 */
 	template<typename F>
 	auto then(F&& f) const {
-		task value_this = *this;
-		return to_task(future->then([=]() {
-			return f(value_this);
-		}));
+		if (future) {
+			task value_this = *this;
+			return to_task(future->then([=] {
+				return f(value_this);
+			}));
+		}
+		else {
+			using future_t = detail::task_future<detail::function_result<F, task>>;
+			DISPATCH_QUEUE_THROW_OR("task is invalid", {
+				auto work = std::bind(f, *this);
+				auto future = future_t::create(std::move(work));
+				return to_task(future);
+			});
+		}
 	}
 
 	/**
 	 * Waits until the task's value is ready (by calling `wait`), then returns the stored value.
 	 *
-	 * If the task failed with an exception, rethrows the exception instead.
+	 * @throw ...  If the task failed with an exception, rethrows the exception instead.
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`).
 	 */
 	T get() const {
-		return future->get();
+		if (future) {
+			return future->get();
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return T{});
+		}
+	}
+
+	/**
+	 * Mark a pending task as ready.
+	 *
+	 * @throw task_error  Thrown if task is not pending.
+	 */
+	template<typename U = T, typename = typename std::enable_if<std::is_void<U>::value>::type>
+	void set_value() {
+		if (future) {
+			if (!future->set_value()) {
+				DISPATCH_QUEUE_THROW_OR("task is not pending", return);
+			}
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
+		}
+	}
+
+	/**
+	 * Mark a pending task as ready with the specified value.
+	 *
+	 * @throw task_error  Thrown if task is not pending.
+	 */
+	template<typename U = T, typename = typename std::enable_if<not std::is_void<U>::value>::type>
+	void set_value(U&& value) {
+		if (future) {
+			if (!future->set_value(std::move(value))) {
+				DISPATCH_QUEUE_THROW_OR("task is not pending", return);
+			}
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
+		}
 	}
 
 	/**
 	 * Returns the task state.
 	 */
 	task_state get_state() const {
-		return future->get_state();
+		if (future) {
+			return future->get_state();
+		}
+		else {
+			return task_state::invalid;
+		}
 	}
 
 	/**
 	 * Returns the exception thrown while running task, if there's any.
 	 */
 	std::exception_ptr get_exception() const {
-		return future->get_exception();
+		if (future) {
+			return future->get_exception();
+		}
+		else {
+			return std::make_exception_ptr(task_error("task is invalid"));
+		}
+	}
+
+	/**
+	 * Mark a pending task as failed with the specified exception.
+	 *
+	 * @throw task_error  Thrown if task is not pending.
+	 */
+	void set_exception(std::exception_ptr exception) {
+		if (future) {
+			if (!future->set_exception(exception)) {
+				DISPATCH_QUEUE_THROW_OR("task is not pending", return);
+			}
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
+		}
 	}
 
 	/**
@@ -91,9 +232,16 @@ public:
 	 *
 	 * If the task is pending (`get_state() == task_state::pending`), blocks indefinitely until task finishes.
 	 * Otherwise returns immediately without blocking.
+	 *
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`)
 	 */
 	void wait() const {
-		future->wait();
+		if (future) {
+			future->wait();
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return);
+		}
 	}
 
 	/**
@@ -103,10 +251,17 @@ public:
 	 * Otherwise returns immediately without blocking.
 	 *
 	 * @returns `true` if the task is finished, otherwise `false`.
+	 *
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`)
 	 */
 	template<class Rep, class Period>
 	bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
-		return future->wait_for(timeout_duration);
+		if (future) {
+			return future->wait_for(timeout_duration);
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return false);
+		}
 	}
 
 	/**
@@ -116,10 +271,79 @@ public:
 	 * Otherwise returns immediately without blocking.
 	 *
 	 * @returns `true` if the task is finished, otherwise `false`.
+	 *
+	 * @throw task_error  Thrown when the task is invalid (`get_state() == task_state::invalid`)
 	 */
 	template<class Clock, class Duration>
 	bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
-		return future->wait_until(timeout_time);
+		if (future) {
+			return future->wait_until(timeout_time);
+		}
+		else {
+			DISPATCH_QUEUE_THROW_OR("task is invalid", return false);
+		}
+	}
+
+	/**
+	 * Convert valued task to void task.
+	 */
+	operator task<void>() const {
+		switch (get_state()) {
+			case task_state::pending: {
+				auto void_future = detail::task_future<void>::create_pending();
+				then([=](const task& t) {
+					if (auto exception = t.get_exception()) {
+						void_future->set_exception(exception);
+					}
+					else {
+						void_future->set_value();
+					}
+				});
+				return to_task(void_future);
+			}
+
+			case task_state::ready:
+				return task<void>::create_ready();
+
+			case task_state::failed:
+				return task<void>::create_failed(get_exception());
+
+			default:
+				return {};
+		}
+	}
+
+	/**
+	 * Convert to task of convertible type.
+	 */
+	template<typename U, typename = typename std::enable_if<std::is_convertible<T, U>::value>::type>
+	explicit operator task<U>() const {
+		switch (get_state()) {
+			case task_state::pending: {
+				auto u_future = detail::task_future<U>::create_pending();
+				then([=](const task& t) {
+					if (auto exception = t.get_exception()) {
+						u_future->set_exception(exception);
+					}
+					else {
+						U u_value = (U) t.get();
+						u_future->set_value(std::move(u_value));
+					}
+				});
+				return to_task(u_future);
+			}
+
+			case task_state::ready: {
+				U u_value = (U) get();
+				return task<U>::create_ready(std::move(u_value));
+			}
+
+			case task_state::failed:
+				return task<U>::create_failed(get_exception());
+
+			default:
+				return {};
+		}
 	}
 
 #ifdef __cpp_lib_coroutine
@@ -134,7 +358,7 @@ private:
 		}
 
 		void await_suspend(std::coroutine_handle<> cont) const {
-			t.future->then([cont]{
+			t.then([cont](auto&&) {
 				cont();
 				if (cont.done()) {
 					cont.destroy();
@@ -155,7 +379,7 @@ public:
 	 * Returns an awaiter that resumes coroutines on the task's continuation.
 	 *
 	 * @code
-	 * dispatch_queue::task<void> task my_coroutine() {
+	 * dispatch_queue::task<void> my_coroutine() {
 	 *     auto task = dispatch_queue.dispatch([]{ ... });
 	 *     co_await task;
 	 *     do_something_after_task_finished();

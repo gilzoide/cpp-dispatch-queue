@@ -3,10 +3,18 @@
 #include <functional>
 #include <utility>
 
-#include "function_result.hpp"
+#include "detail/function_result.hpp"
+#include "detail/pending_task_queue.hpp"
+#include "detail/promise.hpp"
+#include "detail/ranges.hpp"
+#include "detail/worker_pool.hpp"
+#include "task_tag.hpp"
 #include "task.hpp"
-#include "promise.hpp"
-#include "worker_pool.hpp"
+#include "when_all.hpp"
+
+#ifndef DISPATCH_QUEUE_DEFAULT_BATCH_SIZE
+	#define DISPATCH_QUEUE_DEFAULT_BATCH_SIZE 64
+#endif
 
 namespace dispatch_queue {
 
@@ -41,7 +49,7 @@ public:
 			thread_count = std::thread::hardware_concurrency();
 		}
 		if (thread_count > 0) {
-			worker_pool = std::make_unique<detail::worker_pool>(task_queue, thread_count, worker_init);
+			worker_pool = std::make_unique<detail::worker_pool>(task_queue, thread_count, std::move(worker_init));
 		}
 	}
 
@@ -62,7 +70,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch(F&& f, Args&&... args) {
-		return dispatch_internal(false, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::background, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -75,7 +83,60 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_main(F&& f, Args&&... args) {
-		return dispatch_internal(true, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::main, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+
+	/**
+	 * Dispatch a tagged task that calls `f` with forwarded arguments `args`.
+	 * Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
+	 * Use this to serialize different task types without having to create separate dispatch queues.
+	 * If the dispatch queue is in immediate mode, the task is processed immediately in the calling thread.
+	 * @param tag The tag associated to the task
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
+	 * @returns Future for getting `f` result.
+	 */
+	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch_tagged(task_tag tag, F&& f, Args&&... args) {
+		return dispatch_internal(detail::task_type::tagged, tag, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+
+	/**
+	 * Iterate from `begin` until `end` applying `f` to each element in one or more dispatched tasks.
+	 *
+	 * The range is chunked in batches of size `batch_size`, so each dispatched task is applied to at most `batch_size` elements.
+	 * The returned task finishes when all batches finish.
+	 */
+	template<typename F, typename It>
+	task<void> parallel_for(F&& f, const It& begin, const It& end, size_t batch_size = DISPATCH_QUEUE_DEFAULT_BATCH_SIZE) {
+		std::vector<task<void>> tasks;
+		detail::apply_batches([&](auto&& batch_begin, auto&& batch_end) {
+			tasks.emplace_back(dispatch([=] {
+				for (auto it = batch_begin; it != batch_end; ++it) {
+					f(*it);
+				}
+			}));
+		}, begin, end, batch_size);
+		return when_all(tasks);
+	}
+
+	/**
+	 * Iterate over `range` applying `f` to each element in one or more dispatched tasks.
+	 *
+	 * The range is chunked in batches of size `batch_size`, so each dispatched task is applied to at most `batch_size` elements.
+	 * The returned task finishes when all batches finish.
+	 */
+	template<typename F, typename R>
+	task<void> parallel_for(F&& f, R&& range, size_t batch_size = DISPATCH_QUEUE_DEFAULT_BATCH_SIZE) {
+		std::vector<task<void>> tasks;
+		detail::apply_batches([&](auto&& batch_begin, auto&& batch_end) {
+			tasks.emplace_back(dispatch([=] {
+				for (auto it = batch_begin; it != batch_end; ++it) {
+					f(*it);
+				}
+			}));
+		}, range, batch_size);
+		return when_all(tasks);
 	}
 
 	/**
@@ -90,7 +151,7 @@ public:
 	int thread_count() const;
 
 	/**
-	 * Returns the number of queued tasks;
+	 * Returns the number of queued tasks.
 	 */
 	size_t size() const;
 
@@ -184,6 +245,22 @@ private:
         }
         void await_resume() {}
 	};
+
+	struct dispatch_tagged_awaiter {
+		dispatch_queue& dispatch_queue;
+		task_tag tag;
+
+		bool await_ready() const noexcept { return false; }
+        void await_suspend(std::coroutine_handle<> cont) const {
+            dispatch_queue.dispatch_tagged(tag, [cont]{
+				cont();
+				if (cont.done()) {
+					cont.destroy();
+				}
+			});
+        }
+        void await_resume() {}
+	};
 public:
 	/**
 	 * Returns an awaiter that resumes a coroutine using `dispatch` when `co_await`ed.
@@ -198,6 +275,7 @@ public:
 	dispatch_awaiter dispatch() {
 		return dispatch_awaiter(*this);
 	}
+
 	/**
 	 * Returns an awaiter that resumes a coroutine using `dispatch_main` when `co_await`ed.
 	 *
@@ -211,6 +289,20 @@ public:
 	dispatch_main_awaiter dispatch_main() {
 		return dispatch_main_awaiter(*this);
 	}
+
+	/**
+	 * Returns an awaiter that resumes a coroutine using `dispatch_tagged` when `co_await`ed.
+	 *
+	 * @code
+	 * dispatch_queue::task<void> my_coroutine() {
+	 *     co_await dispatch_queue.dispatch_tagged(tag);
+	 *     do_something_with_tag();
+	 * }
+	 * @endcode
+	 */
+	dispatch_tagged_awaiter dispatch_tagged(task_tag tag) {
+		return dispatch_tagged_awaiter(*this, tag);
+	}
 #endif
 
 private:
@@ -218,16 +310,16 @@ private:
 	detail::pending_task_queue task_queue;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_internal(bool run_on_main_loop, F&& f, Args&&... args) {
+	task<Ret> dispatch_internal(detail::task_type type, task_tag tag, F&& f, Args&&... args) {
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
 			auto future = detail::task_future<Ret>::create_pending();
-			worker_pool->enqueue_task({ future->wrap(work) }, run_on_main_loop);
+			worker_pool->enqueue_task(type, { future->wrap(work) }, tag);
 			return task<Ret>(future);
 		}
-		else if (run_on_main_loop) {
+		else if (type == detail::task_type::main) {
 			auto future = detail::task_future<Ret>::create_pending();
-			task_queue.push({ future->wrap(work) }, run_on_main_loop);
+			task_queue.push(type, { future->wrap(work) });
 			return task<Ret>(future);
 		}
 		else {

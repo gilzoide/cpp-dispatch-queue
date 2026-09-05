@@ -8,17 +8,9 @@
 #include <vector>
 
 #include "function_result.hpp"
+#include "../task_state.hpp"
 
 namespace dispatch_queue {
-
-enum class task_state {
-	/// Task is either queued for execution or still running
-	pending,
-	/// Task finished successfully and the result value is readily available
-	ready,
-	/// Task failed with an exception
-	failed,
-};
 
 namespace detail {
 
@@ -32,7 +24,7 @@ namespace detail {
 
 class task_future_base {
 	auto wait_predicate() {
-		return [this]{ return state != task_state::pending; };
+		return [this] { return state != task_state::pending; };
 	}
 public:
 	task_state get_state() {
@@ -45,13 +37,22 @@ public:
 		return exception;
 	}
 
-	void set_exception(std::exception_ptr exception) {
+	bool set_exception(std::exception_ptr exception) {
+		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
+			if (state != task_state::pending) {
+				return false;
+			}
 			state = task_state::failed;
 			this->exception = exception;
+			this->continuations.swap(continuations);
 		}
 		condition_variable.notify_all();
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
+		return true;
 	}
 
 	void wait() {
@@ -75,6 +76,7 @@ protected:
 	std::mutex mutex;
 	std::condition_variable condition_variable;
 	std::exception_ptr exception;
+	std::vector<std::function<void()>> continuations;
 	task_state state;
 
 	struct private_construct {};
@@ -142,7 +144,7 @@ public:
 		auto continuation_future = task_future<function_result<F>>::create_pending();
 		std::unique_lock<std::mutex> lock(mutex);
 		if (state == task_state::pending) {
-			continuations.push_back([=]() {
+			continuations.push_back([=] {
 				continuation_future->do_work(f);
 			});
 		}
@@ -170,11 +172,6 @@ public:
 		DISPATCH_QUEUE_CATCH(...) {
 			set_exception(std::current_exception());
 		}
-
-		auto continuations = std::move(this->continuations);
-		for (auto&& continuation : continuations) {
-			continuation();
-		}
 	}
 
 	template<typename F>
@@ -185,13 +182,22 @@ public:
 		};
 	}
 
-	void set_value(T&& value) {
+	bool set_value(T&& value) {
+		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
+			if (state != task_state::pending) {
+				return false;
+			}
 			state = task_state::ready;
 			this->value = std::move(value);
+			this->continuations.swap(continuations);
 		}
 		condition_variable.notify_all();
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
+		return true;
 	}
 
 private:
@@ -266,11 +272,6 @@ public:
 		DISPATCH_QUEUE_CATCH(...) {
 			set_exception(std::current_exception());
 		}
-
-		auto continuations = std::move(this->continuations);
-		for (auto&& continuation : continuations) {
-			continuation();
-		}
 	}
 
 	template<typename F>
@@ -281,16 +282,22 @@ public:
 		};
 	}
 
-	void set_value() {
+	bool set_value() {
+		std::vector<std::function<void()>> continuations;
 		{
 			std::lock_guard<std::mutex> lock(mutex);
+			if (state != task_state::pending) {
+				return false;
+			}
 			state = task_state::ready;
+			this->continuations.swap(continuations);
 		}
 		condition_variable.notify_all();
+		for (auto&& continuation : continuations) {
+			continuation();
+		}
+		return true;
 	}
-
-private:
-	std::vector<std::function<void()>> continuations;
 };
 
 } // end namespace detail
