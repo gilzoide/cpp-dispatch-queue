@@ -8,6 +8,9 @@
 
 #include "detail/function_result.hpp"
 #include "detail/is_instance_of.hpp"
+#ifdef __cpp_lib_coroutine
+#include "detail/promise.hpp"
+#endif
 #include "detail/task_future.hpp"
 #include "task_error.hpp"
 #include "task_state.hpp"
@@ -389,7 +392,7 @@ public:
 	task_awaiter operator co_await() const {
 		return task_awaiter(*this);
 	}
-#endif
+#endif // __cpp_lib_coroutine
 
 private:
 	std::shared_ptr<detail::task_future<T>> future;
@@ -402,3 +405,13 @@ private:
 };
 
 } // end namespace dispatch_queue
+
+
+#ifdef __cpp_lib_coroutine
+
+template<typename T, typename... Args>
+struct std::coroutine_traits<dispatch_queue::task<T>, Args...> {
+	using promise_type = dispatch_queue::detail::promise<T>;
+};
+
+#endif // __cpp_lib_coroutine

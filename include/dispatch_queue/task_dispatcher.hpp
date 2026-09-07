@@ -5,9 +5,6 @@
 
 #include "detail/function_result.hpp"
 #include "detail/pending_task_queue.hpp"
-#ifdef __cpp_lib_coroutine
-#include "detail/promise.hpp"
-#endif
 #include "detail/ranges.hpp"
 #include "detail/worker_pool.hpp"
 #include "task_tag.hpp"
@@ -222,12 +219,12 @@ public:
 	void main_loop(float delta = 0);
 
 	/**
-	 * Wait until all pending tasks finish processing.
+	 * Wait until all pending background tasks finish processing.
 	 */
 	void wait();
 
 	/**
-	 * Wait until all pending tasks finish processing.
+	 * Wait until all pending background tasks finish processing.
 	 * Blocks until specified `timeout_duration` has elapsed or all queued tasks complete, whichever comes first.
 	 * @returns `true` if all tasks finished processing, otherwise `false`.
 	 */
@@ -242,7 +239,7 @@ public:
 	}
 
 	/**
-	 * Wait until all pending tasks finish processing.
+	 * Wait until all pending background tasks finish processing.
 	 * Blocks until the specified `timeout_time` has been reached or all queued tasks complete, whichever comes first.
 	 * @returns `true` if all tasks finished processing, otherwise `false`.
 	 */
@@ -257,7 +254,7 @@ public:
 	}
 
 	/**
-	 * Cancel pending tasks, wait and release the used threads.
+	 * Cancel pending background tasks, wait and release the used threads.
 	 * The queue now runs in immediate mode.
 	 * It is safe to call this more than once.
 	 */
@@ -316,7 +313,7 @@ public:
 	 * Returns an awaiter that resumes a coroutine using `dispatch` when `co_await`ed.
 	 *
 	 * @code
-	 * dispatcher::task<void> my_coroutine() {
+	 * dispatch_queue::task<void> my_coroutine() {
 	 *     co_await dispatcher.dispatch();
 	 *     do_something_in_background();
 	 * }
@@ -330,7 +327,7 @@ public:
 	 * Returns an awaiter that resumes a coroutine using `dispatch_main` when `co_await`ed.
 	 *
 	 * @code
-	 * dispatcher::task<void> my_coroutine() {
+	 * dispatch_queue::task<void> my_coroutine() {
 	 *     co_await dispatcher.dispatch_main();
 	 *     do_something_in_main_loop();
 	 * }
@@ -344,7 +341,7 @@ public:
 	 * Returns an awaiter that resumes a coroutine using `dispatch_main_after` when `co_await`ed.
 	 *
 	 * @code
-	 * dispatcher::task<void> my_coroutine() {
+	 * dispatch_queue::task<void> my_coroutine() {
 	 *     co_await dispatcher.dispatch_main_after(1);
 	 *     do_something_in_main_loop();
 	 * }
@@ -358,7 +355,7 @@ public:
 	 * Returns an awaiter that resumes a coroutine using `dispatch_tagged` when `co_await`ed.
 	 *
 	 * @code
-	 * dispatcher::task<void> my_coroutine() {
+	 * dispatch_queue::task<void> my_coroutine() {
 	 *     co_await dispatcher.dispatch_tagged(tag);
 	 *     do_something_with_tag();
 	 * }

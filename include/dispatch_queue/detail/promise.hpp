@@ -4,7 +4,7 @@
 
 #include <coroutine>
 
-#include "../task.hpp"
+#include "task_future.hpp"
 
 namespace dispatch_queue {
 
@@ -48,10 +48,5 @@ private:
 } // end namespace detail
 
 } // end namespace dispatch_queue
-
-template<typename T, typename... Args>
-struct std::coroutine_traits<dispatch_queue::task<T>, Args...> {
-	using promise_type = dispatch_queue::detail::promise<T>;
-};
 
 #endif // __cpp_lib_coroutine
