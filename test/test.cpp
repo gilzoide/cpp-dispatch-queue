@@ -226,3 +226,8 @@ TEST_CASE("task as promise") {
 		REQUIRE_THROWS(promise.set_exception(std::make_exception_ptr(std::runtime_error(""))));
 	}
 }
+
+TEST_CASE("move") {
+	dispatch_queue::dispatch_queue q;
+	dispatch_queue::dispatch_queue q2 = std::move(q);
+}

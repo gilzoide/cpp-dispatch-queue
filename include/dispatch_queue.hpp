@@ -62,8 +62,13 @@ public:
 		}
 	}
 
+	// Not copyable
 	dispatch_queue(const dispatch_queue&) = delete;
 	dispatch_queue& operator=(const dispatch_queue&) = delete;
+
+	// But moveable
+	dispatch_queue(dispatch_queue&&) = default;
+	dispatch_queue& operator=(dispatch_queue&&) = default;
 
 	/**
 	 * Calls `shutdown`.
