@@ -17,8 +17,8 @@ if(DISPATCH_QUEUE_UNITY_BUILD)
   set(_DISPATCH_QUEUE_SRC "src/dispatch_queue-one.cpp")
 else()
   set(_DISPATCH_QUEUE_SRC
-    "src/dispatch_queue.cpp"
     "src/pending_task_queue.cpp"
+    "src/task_dispatcher.cpp"
     "src/thread_name.cpp"
     "src/worker_pool.cpp"
   )

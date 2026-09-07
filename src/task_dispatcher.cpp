@@ -3,26 +3,26 @@
 
 namespace dispatch_queue {
 
-dispatch_queue::dispatch_queue()
+task_dispatcher::task_dispatcher()
 {
 }
 
-dispatch_queue::dispatch_queue(int thread_count, const std::string& name_prefix)
-	: dispatch_queue(thread_count, [name_prefix](int i){
+task_dispatcher::task_dispatcher(int thread_count, const std::string& name_prefix)
+	: task_dispatcher(thread_count, [name_prefix](int i){
 		set_thread_name(name_prefix + std::to_string(i));
 	})
 {
 }
 
-dispatch_queue::~dispatch_queue() {
+task_dispatcher::~task_dispatcher() {
 	shutdown();
 }
 
-bool dispatch_queue::is_threaded() const {
+bool task_dispatcher::is_threaded() const {
 	return worker_pool != nullptr;
 }
 
-int dispatch_queue::thread_count() const {
+int task_dispatcher::thread_count() const {
 	if (worker_pool) {
 		return worker_pool->thread_count();
 	}
@@ -31,7 +31,7 @@ int dispatch_queue::thread_count() const {
 	}
 }
 
-size_t dispatch_queue::size() const {
+size_t task_dispatcher::size() const {
 	if (worker_pool) {
 		return worker_pool->size();
 	}
@@ -40,17 +40,17 @@ size_t dispatch_queue::size() const {
 	}
 }
 
-bool dispatch_queue::empty() const {
+bool task_dispatcher::empty() const {
 	return size() == 0;
 }
 
-void dispatch_queue::clear() {
+void task_dispatcher::clear() {
 	if (worker_pool) {
 		worker_pool->clear();
 	}
 }
 
-void dispatch_queue::main_loop() {
+void task_dispatcher::main_loop() {
 	auto main_loop_tasks = worker_pool
 		? worker_pool->pop_main_loop_tasks()
 		: task_queue.pop_main_loop_tasks();
@@ -59,13 +59,13 @@ void dispatch_queue::main_loop() {
 	}
 }
 
-void dispatch_queue::wait() {
+void task_dispatcher::wait() {
 	if (worker_pool) {
 		worker_pool->wait();
 	}
 }
 
-void dispatch_queue::shutdown() {
+void task_dispatcher::shutdown() {
 	clear();
 	worker_pool.reset();
 }

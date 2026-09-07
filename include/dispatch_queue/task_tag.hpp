@@ -6,7 +6,7 @@
 namespace dispatch_queue {
 
 /**
- * Tags used by `dispatch_queue::dispatch_tagged`.
+ * Tags used by `task_dispatcher::dispatch_tagged`.
  * Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
  */
 using task_tag = int;

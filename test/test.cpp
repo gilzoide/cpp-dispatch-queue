@@ -8,7 +8,7 @@
 using namespace std::chrono_literals;
 
 TEST_CASE("Synchronous") {
-	dispatch_queue::dispatch_queue q(0);
+	dispatch_queue::task_dispatcher q(0);
 	REQUIRE(!q.is_threaded());
 
 	auto future = q.dispatch([]{ return 42; });
@@ -24,7 +24,7 @@ TEST_CASE("Synchronous") {
 }
 
 TEST_CASE("Serial") {
-	dispatch_queue::dispatch_queue q(1);
+	dispatch_queue::task_dispatcher q(1);
 	REQUIRE(q.is_threaded());
 
 	auto future = q.dispatch([]{ return 42; });
@@ -40,7 +40,7 @@ TEST_CASE("Serial") {
 }
 
 TEST_CASE("Concurrent") {
-	dispatch_queue::dispatch_queue q(-1);
+	dispatch_queue::task_dispatcher q(-1);
 	REQUIRE(q.is_threaded());
 
 	auto future = q.dispatch([]{ return 42; });
@@ -58,7 +58,7 @@ TEST_CASE("Concurrent") {
 }
 
 TEST_CASE("Main loop") {
-	dispatch_queue::dispatch_queue q(-1);
+	dispatch_queue::task_dispatcher q(-1);
 
 	auto thread_id = std::this_thread::get_id();
 	auto task = q.dispatch_main([=]{
@@ -72,7 +72,7 @@ TEST_CASE("Main loop") {
 }
 
 TEST_CASE("Main loop dependency") {
-	dispatch_queue::dispatch_queue q(-1);
+	dispatch_queue::task_dispatcher q(-1);
 
 	auto thread_id = std::this_thread::get_id();
 	auto task = q.dispatch([=]{
@@ -97,7 +97,7 @@ TEST_CASE("Main loop dependency") {
 
 #ifdef __cpp_impl_coroutine
 TEST_CASE("Dispatch awaiters") {
-	dispatch_queue::dispatch_queue q(-1);
+	dispatch_queue::task_dispatcher q(-1);
 
 	auto thread_id = std::this_thread::get_id();
 	auto coro = [&, thread_id]() -> dispatch_queue::task<int> {
@@ -164,7 +164,7 @@ TEST_CASE("parallel_for") {
 		REQUIRE(!b);
 	}
 
-	dispatch_queue::dispatch_queue q(-1);
+	dispatch_queue::task_dispatcher q(-1);
 	auto task = q.parallel_for([&](auto& b) {
 		b = true;
 	}, finished).then([&](const auto& t) {
@@ -228,6 +228,6 @@ TEST_CASE("task as promise") {
 }
 
 TEST_CASE("move") {
-	dispatch_queue::dispatch_queue q;
-	dispatch_queue::dispatch_queue q2 = std::move(q);
+	dispatch_queue::task_dispatcher q;
+	dispatch_queue::task_dispatcher q2 = std::move(q);
 }

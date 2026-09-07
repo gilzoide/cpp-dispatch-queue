@@ -380,7 +380,7 @@ public:
 	 *
 	 * @code
 	 * dispatch_queue::task<void> my_coroutine() {
-	 *     auto task = dispatch_queue.dispatch([]{ ... });
+	 *     auto task = dispatcher.dispatch([]{ ... });
 	 *     co_await task;
 	 *     do_something_after_task_finished();
 	 * }
