@@ -13,6 +13,11 @@ bool pending_task_queue::empty() const {
 	return background_tasks.empty();
 }
 
+bool pending_task_queue::main_empty() const {
+	return main_loop_tasks.empty()
+		&& main_loop_delayed_tasks.empty();
+}
+
 size_t pending_task_queue::size() const {
 	size_t count = 0;
 	for (auto&& it : tagged_tasks) {
@@ -21,11 +26,21 @@ size_t pending_task_queue::size() const {
 	return count + background_tasks.size();
 }
 
+size_t pending_task_queue::main_size() const {
+	return main_loop_tasks.size()
+		+ main_loop_delayed_tasks.size();
+}
+
 void pending_task_queue::clear() {
 	for (auto&& it : tagged_tasks) {
 		it.second.clear();
 	}
 	background_tasks.clear();
+}
+
+void pending_task_queue::main_clear() {
+	main_loop_tasks.clear();
+	main_loop_delayed_tasks.clear();
 }
 
 bool pending_task_queue::push(task_type type, task_function&& task, float delay, task_tag tag) {

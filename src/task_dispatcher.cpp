@@ -40,13 +40,45 @@ size_t task_dispatcher::size() const {
 	}
 }
 
+size_t task_dispatcher::main_size() const {
+	if (worker_pool) {
+		return worker_pool->main_size();
+	}
+	else {
+		return task_queue.main_size();
+	}
+}
+
 bool task_dispatcher::empty() const {
-	return size() == 0;
+	if (worker_pool) {
+		return worker_pool->empty();
+	}
+	else {
+		return true;
+	}
+}
+
+bool task_dispatcher::main_empty() const {
+	if (worker_pool) {
+		return worker_pool->main_empty();
+	}
+	else {
+		return task_queue.main_empty();
+	}
 }
 
 void task_dispatcher::clear() {
 	if (worker_pool) {
 		worker_pool->clear();
+	}
+}
+
+void task_dispatcher::main_clear() {
+	if (worker_pool) {
+		worker_pool->main_clear();
+	}
+	else {
+		task_queue.main_clear();
 	}
 }
 

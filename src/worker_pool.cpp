@@ -14,9 +14,24 @@ int worker_pool::thread_count() const {
 	return worker_thread_count;
 }
 
+bool worker_pool::empty() const {
+	std::lock_guard<std::mutex> lock(mutex);
+	return task_queue.empty();
+}
+
+bool worker_pool::main_empty() const {
+	std::lock_guard<std::mutex> lock(mutex);
+	return task_queue.main_empty();
+}
+
 size_t worker_pool::size() const {
 	std::lock_guard<std::mutex> lock(mutex);
 	return task_queue.size();
+}
+
+size_t worker_pool::main_size() const {
+	std::lock_guard<std::mutex> lock(mutex);
+	return task_queue.main_size();
 }
 
 void worker_pool::enqueue_task(task_type type, task_function&& task, float delay, task_tag tag) {
@@ -39,6 +54,11 @@ std::list<task_function> worker_pool::pop_main_loop_tasks(float delta) {
 void worker_pool::clear() {
 	std::lock_guard<std::mutex> lock(mutex);
 	task_queue.clear();
+}
+
+void worker_pool::main_clear() {
+	std::lock_guard<std::mutex> lock(mutex);
+	task_queue.main_clear();
 }
 
 void worker_pool::shutdown() {

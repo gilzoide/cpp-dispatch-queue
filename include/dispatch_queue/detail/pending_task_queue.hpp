@@ -34,8 +34,11 @@ struct delayed_task {
 class pending_task_queue {
 public:
 	bool empty() const;
+	bool main_empty() const;
 	size_t size() const;
+	size_t main_size() const;
 	void clear();
+	void main_clear();
 
 	bool push(task_type type, task_function&& task, float delay, task_tag tag = NULL_TAG);
 	bool try_pop(pending_task& task);

@@ -185,20 +185,32 @@ public:
 	int thread_count() const;
 
 	/**
-	 * Returns the number of queued tasks.
+	 * Returns the number of queued background tasks.
 	 */
 	size_t size() const;
+	/**
+	 * Returns the number of queued main loop tasks.
+	 */
+	size_t main_size() const;
 
 	/**
-	 * Returns whether queue is empty, that is, there are no tasks queued.
+	 * Returns whether there are no background tasks queued.
 	 */
 	bool empty() const;
+	/**
+	 * Returns whether there are no main loop tasks queued.
+	 */
+	bool main_empty() const;
 
 	/**
-	 * Cancel pending tasks, clearing the current queue.
+	 * Cancel pending background tasks, clearing the current queue.
 	 * Tasks that are being processed will still run to completion.
 	 */
 	void clear();
+	/**
+	 * Cancel pending main loop tasks, clearing the current queue.
+	 */
+	void main_clear();
 
 	/**
 	 * Invoke main loop tasks dispatched using `dispatch_main`.

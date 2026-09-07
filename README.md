@@ -1,5 +1,6 @@
 # Dispatch Queue
 Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 coroutine support.
+Provides a simple but powerful API and is designed for interactive applications / games.
 
 
 ## Features
@@ -209,8 +210,10 @@ dispatch_queue::task<void> my_coro() {
 
 int dispatcher_thread_count = dispatcher.thread_count();
 bool dispatcher_is_threaded = dispatcher.is_threaded();
-int pending_task_count = dispatcher.size();
-bool has_no_pending_tasks = dispatcher.empty();
+int pending_background_task_count = dispatcher.size();
+int pending_main_loop_task_count = dispatcher.main_size();
+bool has_no_pending_background_tasks = dispatcher.empty();
+bool has_no_pending_main_loop_tasks = dispatcher.main_empty();
 
 
 ///////////////////////////////////////////////////////////
@@ -220,6 +223,7 @@ bool has_no_pending_tasks = dispatcher.empty();
 // Cancel all pending tasks.
 // Tasks already executing will still run to completion.
 dispatcher.clear();
+dispatcher.main_clear();
 
 // Wait until pending tasks are completed
 dispatcher.wait();

@@ -35,11 +35,17 @@ public:
 	worker_pool& operator=(const worker_pool&) = delete;
 
 	int thread_count() const;
+
+	bool empty() const;
+	bool main_empty() const;
+
 	size_t size() const;
+	size_t main_size() const;
 
 	void enqueue_task(task_type type, task_function&& task, float delay, task_tag tag);
 	std::list<task_function> pop_main_loop_tasks(float delta);
 	void clear();
+	void main_clear();
 	void shutdown();
 
 	void wait() const;
