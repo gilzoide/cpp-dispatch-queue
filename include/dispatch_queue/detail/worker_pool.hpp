@@ -37,8 +37,8 @@ public:
 	int thread_count() const;
 	size_t size() const;
 
-	void enqueue_task(task_type type, task_function&& task, task_tag tag);
-	std::list<task_function> pop_main_loop_tasks();
+	void enqueue_task(task_type type, task_function&& task, float delay, task_tag tag);
+	std::list<task_function> pop_main_loop_tasks(float delta);
 	void clear();
 	void shutdown();
 

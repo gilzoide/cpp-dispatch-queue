@@ -71,6 +71,21 @@ TEST_CASE("Main loop") {
 	REQUIRE(task.get() == 42);
 }
 
+TEST_CASE("Main loop delayed") {
+	dispatch_queue::task_dispatcher q(-1);
+
+	for (int delay = 0; delay < 10; ++delay) {
+		auto delayed_task = q.dispatch_main_after(delay, [](){});
+		REQUIRE(delayed_task.get_state() == dispatch_queue::task_state::pending);
+		for (int i = 0; i < delay - 1; ++i) {
+			q.main_loop(1);
+			REQUIRE(delayed_task.get_state() == dispatch_queue::task_state::pending);
+		}
+		q.main_loop(1);
+		REQUIRE(delayed_task.get_state() == dispatch_queue::task_state::ready);
+	}
+}
+
 TEST_CASE("Main loop dependency") {
 	dispatch_queue::task_dispatcher q(-1);
 
@@ -106,12 +121,14 @@ TEST_CASE("Dispatch awaiters") {
 		REQUIRE(std::this_thread::get_id() != thread_id);
 		co_await q.dispatch_main();
 		REQUIRE(std::this_thread::get_id() == thread_id);
+		co_await q.dispatch_main_after(3);
+		REQUIRE(std::this_thread::get_id() == thread_id);
 		int value = co_await q.dispatch([]{ return 3; });
 		REQUIRE(value == 3);
 		co_return value;
 	}();
 	while (coro.get_state() != dispatch_queue::task_state::ready) {
-		q.main_loop();
+		q.main_loop(1);
 	}
 	REQUIRE(coro.get() == 3);
 }

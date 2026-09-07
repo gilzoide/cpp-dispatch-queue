@@ -12,6 +12,8 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
 - Use `task_dispatcher.dispatch_main(f, args...)` to dispatch "main loop" tasks
   + Users must call `task_dispatcher.main_loop()` manually where appropriate to run queued main loop tasks
   + Useful for synchronizing state calculated in background tasks with the application's main loop
+- Use `task_dispatcher.dispatch_main_after(delay, f, args...)` to dispatch delayed "main loop" tasks
+  + Pass delta time to `task_dispatcher.main_loop(dt)` to advance time
 - Use `task_dispatcher.dispatch_tagged(tag, f, args...)` to dispatch tagged tasks
   + Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
     Use this to serialize different task types without having to create separate dispatch queues.
@@ -30,7 +32,8 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
   + `co_await` other tasks to resume the coroutine as the task's continuation
   + Use `co_await task_dispatcher.dispatch()` to continue coroutine in a dispatch queue's background loop
   + Use `co_await task_dispatcher.dispatch_main()` to continue coroutine in a dispatch queue's main loop
-  + Use `co_await task_dispatcher.dispatch_tagged()` to continue coroutine in a dispatch queue's background loop using the provided tag
+  + Use `co_await task_dispatcher.dispatch_main_after(delay)` to continue coroutine in a dispatch queue's main loop after delay
+  + Use `co_await task_dispatcher.dispatch_tagged(tag)` to continue coroutine in a dispatch queue's background loop using the provided tag
 - Supports compiling with `-fno-exceptions` and `-fno-rtti`
 - Unified implementation file [src/dispatch_queue-one.cpp](src/dispatch_queue-one.cpp), easy to integrate in any project
 
@@ -113,6 +116,15 @@ while (!ApplicationShouldExit()) {
     dispatcher.main_loop();
 }
 
+// "main loop" tasks can also be delayed, pass delta time to `main_loop(dt)` to advance time
+dispatcher.dispatch_main_after(5, []{
+    std::cout << "This will run inside the call to `main_loop` after 5s" << std::endl;
+});
+while (!ApplicationShouldExit()) {
+    // Inside your application's main loop...
+    dispatcher.main_loop(delta_time);
+}
+
 // Queue tagged tasks
 // Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
 enum TaskTags {
@@ -177,6 +189,11 @@ dispatch_queue::task<void> my_coro() {
     // co_await .dispatch_main()
     // coroutine continues within dispatch queue's main loop
     co_await dispatcher.dispatch_main();
+    do_something_in_main_loop();
+
+    // co_await .dispatch_main_after(delay)
+    // coroutine continues within dispatch queue's main loop after delay
+    co_await dispatcher.dispatch_main_after(1);
     do_something_in_main_loop();
 
     // co_await .dispatch_tagged(tag)

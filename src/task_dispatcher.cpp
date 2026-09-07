@@ -1,4 +1,4 @@
-#include "../include/dispatch_queue/dispatch_queue.hpp"
+#include "../include/dispatch_queue/task_dispatcher.hpp"
 #include "../include/dispatch_queue/thread_name.hpp"
 
 namespace dispatch_queue {
@@ -50,10 +50,10 @@ void task_dispatcher::clear() {
 	}
 }
 
-void task_dispatcher::main_loop() {
+void task_dispatcher::main_loop(float delta) {
 	auto main_loop_tasks = worker_pool
-		? worker_pool->pop_main_loop_tasks()
-		: task_queue.pop_main_loop_tasks();
+		? worker_pool->pop_main_loop_tasks(delta)
+		: task_queue.pop_main_loop_tasks(delta);
 	for (auto&& it : main_loop_tasks) {
 		it();
 	}

@@ -19,11 +19,11 @@ size_t worker_pool::size() const {
 	return task_queue.size();
 }
 
-void worker_pool::enqueue_task(task_type type, task_function&& task, task_tag tag) {
+void worker_pool::enqueue_task(task_type type, task_function&& task, float delay, task_tag tag) {
 	bool should_wake_thread;
 	{
 		std::lock_guard<std::mutex> lock(mutex);
-		bool has_new_background_task = task_queue.push(type, std::move(task), tag);
+		bool has_new_background_task = task_queue.push(type, std::move(task), delay, tag);
 		should_wake_thread = has_new_background_task && idle_threads;
 	}
 	if (should_wake_thread) {
@@ -31,9 +31,9 @@ void worker_pool::enqueue_task(task_type type, task_function&& task, task_tag ta
 	}
 }
 
-std::list<task_function> worker_pool::pop_main_loop_tasks() {
+std::list<task_function> worker_pool::pop_main_loop_tasks(float delta) {
 	std::lock_guard<std::mutex> lock(mutex);
-	return task_queue.pop_main_loop_tasks();
+	return task_queue.pop_main_loop_tasks(delta);
 }
 
 void worker_pool::clear() {

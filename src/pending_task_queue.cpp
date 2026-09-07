@@ -28,10 +28,15 @@ void pending_task_queue::clear() {
 	background_tasks.clear();
 }
 
-bool pending_task_queue::push(task_type type, task_function&& task, task_tag tag) {
+bool pending_task_queue::push(task_type type, task_function&& task, float delay, task_tag tag) {
 	switch (type) {
 		case task_type::main:
-			main_loop_tasks.push_back({ std::move(task) });
+			if (delay > 0) {
+				main_loop_delayed_tasks.push_back({ std::move(task), delay });
+			}
+			else {
+				main_loop_tasks.push_back({ std::move(task) });
+			}
 			return false;
 
 		case task_type::tagged:
@@ -88,9 +93,21 @@ bool pending_task_queue::try_pop(pending_task& task) {
 	}
 }
 
-std::list<task_function> pending_task_queue::pop_main_loop_tasks() {
+std::list<task_function> pending_task_queue::pop_main_loop_tasks(float delta) {
 	std::list<task_function> result;
 	main_loop_tasks.swap(result);
+	if (delta > 0) {
+		for (auto it = main_loop_delayed_tasks.begin(); it != main_loop_delayed_tasks.end(); ) {
+			it->delay -= delta;
+			if (it->delay <= 0) {
+				result.push_back({ std::move(it->implementation) });
+				it = main_loop_delayed_tasks.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
+	}
 	return result;
 }
 

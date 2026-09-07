@@ -80,18 +80,20 @@ public:
 	/**
 	 * Dispatch a task that calls `f` with forwarded arguments `args`.
 	 * If the dispatch queue is in immediate mode, the task is processed immediately in the calling thread.
+	 *
 	 * @param f Functor to be executed
 	 * @param args Arguments forwarded to `f`
 	 * @returns Future for getting `f` result.
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch(F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::background, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::background, NULL_TAG, 0, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
 	 * Dispatch a task that calls `f` with forwarded arguments `args` in main loop.
 	 * Tasks dispatched with `dispatch_main` will only be executed when calling `main_loop`.
+	 *
 	 * @param f Functor to be executed
 	 * @param args Arguments forwarded to `f`
 	 * @returns Future for getting `f` result.
@@ -99,7 +101,22 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_main(F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::main, NULL_TAG, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::main, NULL_TAG, 0, std::forward<F>(f), std::forward<Args>(args)...);
+	}
+
+	/**
+	 * Dispatch a task that calls `f` with forwarded arguments `args` in main loop.
+	 * Tasks dispatched with `dispatch_main_after` will only be executed when calling `main_loop(float)` with a positive delta.
+	 *
+	 * @param delay Time to wait until task is executed in main loop
+	 * @param f Functor to be executed
+	 * @param args Arguments forwarded to `f`
+	 * @returns Future for getting `f` result.
+	 * @see main_loop
+	 */
+	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
+	task<Ret> dispatch_main_after(float delay, F&& f, Args&&... args) {
+		return dispatch_internal(detail::task_type::main, NULL_TAG, delay, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -107,6 +124,7 @@ public:
 	 * Tasks tagged with the same value never run in parallel: at most one task is processed for each tag at a time.
 	 * Use this to serialize different task types without having to create separate dispatch queues.
 	 * If the dispatch queue is in immediate mode, the task is processed immediately in the calling thread.
+	 *
 	 * @param tag The tag associated to the task
 	 * @param f Functor to be executed
 	 * @param args Arguments forwarded to `f`
@@ -114,7 +132,7 @@ public:
 	 */
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
 	task<Ret> dispatch_tagged(task_tag tag, F&& f, Args&&... args) {
-		return dispatch_internal(detail::task_type::tagged, tag, std::forward<F>(f), std::forward<Args>(args)...);
+		return dispatch_internal(detail::task_type::tagged, tag, 0, std::forward<F>(f), std::forward<Args>(args)...);
 	}
 
 	/**
@@ -185,8 +203,11 @@ public:
 	/**
 	 * Invoke main loop tasks dispatched using `dispatch_main`.
 	 * This should be called in your application's main loop.
+	 *
+	 * @param delta Delta time between last main loop and this one.
+	 *              Pass a positive value to advance time and execute delayed tasks dispatched using `dispatch_main_after`.
 	 */
-	void main_loop();
+	void main_loop(float delta = 0);
 
 	/**
 	 * Wait until all pending tasks finish processing.
@@ -249,10 +270,11 @@ private:
 
 	struct dispatch_main_awaiter {
 		task_dispatcher& dispatcher;
+		float delay;
 
 		bool await_ready() const noexcept { return false; }
         void await_suspend(std::coroutine_handle<> cont) const {
-            dispatcher.dispatch_main([cont]{
+            dispatcher.dispatch_main_after(delay, [cont]{
 				cont();
 				if (cont.done()) {
 					cont.destroy();
@@ -303,7 +325,21 @@ public:
 	 * @endcode
 	 */
 	dispatch_main_awaiter dispatch_main() {
-		return dispatch_main_awaiter(*this);
+		return dispatch_main_awaiter(*this, 0);
+	}
+
+	/**
+	 * Returns an awaiter that resumes a coroutine using `dispatch_main_after` when `co_await`ed.
+	 *
+	 * @code
+	 * dispatcher::task<void> my_coroutine() {
+	 *     co_await dispatcher.dispatch_main_after(1);
+	 *     do_something_in_main_loop();
+	 * }
+	 * @endcode
+	 */
+	dispatch_main_awaiter dispatch_main_after(float delay) {
+		return dispatch_main_awaiter(*this, delay);
 	}
 
 	/**
@@ -326,16 +362,16 @@ private:
 	detail::pending_task_queue task_queue;
 
 	template<typename F, typename... Args, typename Ret = detail::function_result<F, Args...>>
-	task<Ret> dispatch_internal(detail::task_type type, task_tag tag, F&& f, Args&&... args) {
+	task<Ret> dispatch_internal(detail::task_type type, task_tag tag, float delay, F&& f, Args&&... args) {
 		auto work = std::bind(std::move(f), std::forward<Args>(args)...);
 		if (worker_pool) {
 			auto future = detail::task_future<Ret>::create_pending();
-			worker_pool->enqueue_task(type, { future->wrap(work) }, tag);
+			worker_pool->enqueue_task(type, { future->wrap(work) }, delay, tag);
 			return task<Ret>(future);
 		}
 		else if (type == detail::task_type::main) {
 			auto future = detail::task_future<Ret>::create_pending();
-			task_queue.push(type, { future->wrap(work) });
+			task_queue.push(type, { future->wrap(work) }, delay);
 			return task<Ret>(future);
 		}
 		else {
