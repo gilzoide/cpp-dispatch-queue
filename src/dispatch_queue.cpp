@@ -1,5 +1,5 @@
-#include "../include/dispatch_queue.hpp"
-#include "../include/thread_name.hpp"
+#include "../include/dispatch_queue/dispatch_queue.hpp"
+#include "../include/dispatch_queue/thread_name.hpp"
 
 namespace dispatch_queue {
 

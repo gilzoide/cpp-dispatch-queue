@@ -3,7 +3,7 @@
 #include <thread>
 
 #include <catch2/catch_test_macros.hpp>
-#include <dispatch_queue.hpp>
+#include <dispatch_queue/dispatch_queue.hpp>
 
 using namespace std::chrono_literals;
 

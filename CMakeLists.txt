@@ -24,20 +24,20 @@ else()
   )
 endif()
 set(_DISPATCH_QUEUE_HEADERS
-  "include/detail/function_result.hpp"
-  "include/detail/is_instance_of.hpp"
-  "include/detail/pending_task_queue.hpp"
-  "include/detail/promise.hpp"
-  "include/detail/ranges.hpp"
-  "include/detail/task_future.hpp"
-  "include/detail/worker_pool.hpp"
-  "include/dispatch_queue.hpp"
-  "include/task_error.hpp"
-  "include/task_state.hpp"
-  "include/task_tag.hpp"
-  "include/task.hpp"
-  "include/when_all.hpp"
-  "include/when_any.hpp"
+  "include/dispatch_queue/detail/function_result.hpp"
+  "include/dispatch_queue/detail/is_instance_of.hpp"
+  "include/dispatch_queue/detail/pending_task_queue.hpp"
+  "include/dispatch_queue/detail/promise.hpp"
+  "include/dispatch_queue/detail/ranges.hpp"
+  "include/dispatch_queue/detail/task_future.hpp"
+  "include/dispatch_queue/detail/worker_pool.hpp"
+  "include/dispatch_queue/dispatch_queue.hpp"
+  "include/dispatch_queue/task_error.hpp"
+  "include/dispatch_queue/task_state.hpp"
+  "include/dispatch_queue/task_tag.hpp"
+  "include/dispatch_queue/task.hpp"
+  "include/dispatch_queue/when_all.hpp"
+  "include/dispatch_queue/when_any.hpp"
 )
 
 add_library(dispatch_queue ${_DISPATCH_QUEUE_STATIC_OR_SHARED}

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
-#include <dispatch_queue.hpp>
+#include <dispatch_queue/dispatch_queue.hpp>
 
 std::uint64_t fibonacci(std::uint64_t number) {
     return number < 2 ? 1 : fibonacci(number - 1) + fibonacci(number - 2);

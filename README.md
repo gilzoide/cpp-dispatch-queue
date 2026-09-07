@@ -37,7 +37,7 @@ Dispatch Queue / Thread Pool implementation for C++11 with built-in C++20 corout
 
 ## Usage example
 ```cpp
-#include <dispatch_queue.hpp>
+#include <dispatch_queue/dispatch_queue.hpp>
 
 ///////////////////////////////////////////////////////////
 // 1. Create a dispatch queue
