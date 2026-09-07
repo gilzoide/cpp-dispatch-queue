@@ -1,4 +1,5 @@
 #include "../include/dispatch_queue.hpp"
+#include "../include/thread_name.hpp"
 
 namespace dispatch_queue {
 
@@ -6,8 +7,10 @@ dispatch_queue::dispatch_queue()
 {
 }
 
-dispatch_queue::dispatch_queue(int thread_count)
-	: dispatch_queue(thread_count, [](int){})
+dispatch_queue::dispatch_queue(int thread_count, const std::string& name_prefix)
+	: dispatch_queue(thread_count, [name_prefix](int i){
+		set_thread_name(name_prefix + std::to_string(i));
+	})
 {
 }
 

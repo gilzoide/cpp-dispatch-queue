@@ -19,6 +19,7 @@ else()
   set(_DISPATCH_QUEUE_SRC
     "src/dispatch_queue.cpp"
     "src/pending_task_queue.cpp"
+    "src/thread_name.cpp"
     "src/worker_pool.cpp"
   )
 endif()

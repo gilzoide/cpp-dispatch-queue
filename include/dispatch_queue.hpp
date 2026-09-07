@@ -28,9 +28,18 @@ public:
 
 	/**
 	 * Initializes dispatch queue with `thread_count` background threads and a no-op `worker_init`.
+	 *
+	 * @param thread_count  Number of background threads used to run tasks.
+	 *                      If 0, the dispatch queue is created in immediate mode.
+	 *                      If 1, tasks will run serially in background, one at a time, without any concurrency.
+	 *                      Otherwise, `thread_count` threads will be created and tasks may run concurrently.
+	 *                      Pass a negative number to use the default value of `std::thread::hardware_concurrency()` threads.
+	 * @param name_prefix  Prefix for background thread names.
+	 *                     Each thread will be named with the prefix + a number from 0 until thread_count.
+	 *
 	 * @see dispatch_queue(int, Fn&&)
 	 */
-	dispatch_queue(int thread_count);
+	dispatch_queue(int thread_count, const std::string& name_prefix = "dispatch_queue");
 
 	/**
 	 * Initializes dispatch queue with `thread_count` background threads and a worker initialization functor.
