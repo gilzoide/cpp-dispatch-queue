@@ -5,9 +5,7 @@
 	#include <cstdlib>
 	#include <windows.h>
 	#include <processthreadsapi.h>
-#elif defined(__EMSCRIPTEN__)
-	#include <emscripten/threading.h>
-#else
+#elif !defined(__EMSCRIPTEN__)
 	#include <pthread.h>
 #endif
 
@@ -31,11 +29,7 @@ void set_thread_name(const std::string& name) {
 	char buf[64];
 	copy_into(buf, name);
 	pthread_setname_np(buf);
-#elif defined(__EMSCRIPTEN__)
-	char buf[32];
-	copy_into(buf, name);
-	emscripten_set_thread_name(pthread_self(), buf);
-#else
+#elif !defined(__EMSCRIPTEN__)
 	char buf[16];
 	copy_into(buf, name);
 	pthread_setname_np(pthread_self(), buf);
