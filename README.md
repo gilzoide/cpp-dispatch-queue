@@ -39,6 +39,10 @@ Provides a simple but powerful API and is designed for interactive applications 
 - Unified implementation file [src/dispatch_queue-one.cpp](src/dispatch_queue-one.cpp), easy to integrate in any project
 
 
+## Articles
+1. [Designing Dispatch Queue](articles/01-designing-en.md)
+
+
 ## Usage example
 ```cpp
 #include <dispatch_queue/dispatch_queue.hpp>
