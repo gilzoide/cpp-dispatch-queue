@@ -6,7 +6,7 @@
 	#include <windows.h>
 	#include <processthreadsapi.h>
 #elif defined(__EMSCRIPTEN__)
-	#include <emscripten.h>
+	#include <emscripten/threading.h>
 #else
 	#include <pthread.h>
 #endif
