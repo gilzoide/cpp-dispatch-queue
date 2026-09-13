@@ -1,4 +1,4 @@
-# Projetando Dispatch Queue
+# Design de Dispatch Queue
 > 2026-09-12 | `#C++ #Multithreading #ThreadPool` | [*English version*](01-designing-en.md)
 
 ## Contexto
@@ -76,7 +76,7 @@ t1.then([](const task<void>& t) {
 
 ## Promise
 Mencionei o `TaskCompletionSource` do C# acima, xo explicar melhor: é um meio de usuários completarem tarefas "manualmente".
-É muito útil para converter métodos que recebem *callbacks* em código pronto pra ser usando com async/await.
+É muito útil para converter métodos que recebem *callbacks* em código pronto pra ser usado com async/await.
 
 Em Dispatch Queue, decidi adicionar essa funcionalidade na classe `task<T>` mesmo ao invés de criar uma classe `task_source<T>` separada, mais por simplicidade mesmo.
 ```cpp

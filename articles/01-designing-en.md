@@ -82,7 +82,7 @@ In Dispatch Queue, I decided adding this feature into the existing `task<T>` cla
 ```cpp
 // Using tasks as promise
 task<int> promise = task<int>::create_pending();
-do_something_async_with_callback([promise](int result) {
+do_something_async_with_callback([=](int result) {
     promise.set_value(result);
 });
 
@@ -182,7 +182,7 @@ So, C++20 introduces coroutines, which is an awesome mechanism for suspending an
 
 In C++, though, there's no default runtime for this suspension and resuming of functions, we need to provide some implementation for it to work.
 
-So I used Dispatch Queue's [`task_dispatcher`](../include/dispatch_queue/task_dispatcher.hpp) and [`task`](../include/dispatch_queue/task.hpp) for the coroutine runtime, allowing code such as the following:
+So I used Dispatch Queue's [`task_dispatcher`](../include/dispatch_queue/task_dispatcher.hpp) and [`task<T>`](../include/dispatch_queue/task.hpp) for the coroutine runtime, allowing code such as the following:
 ```cpp
 task_dispatcher dispatcher;
 
